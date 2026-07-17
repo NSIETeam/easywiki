@@ -13,7 +13,7 @@ from orgmind.governance.quality import compute_quality_score, QualityInput
 from orgmind.governance.dedup import compute_content_hash
 from orgmind.services.write_queue import execute_write
 from orgmind.services.audit import log_audit
-from orgmind.config import JWT_SECRET, JWT_ALGORITHM
+from orgmind.auth import decode_auth_header
 from orgmind.easywiki.version_diff import three_way_merge, progress_field_merge
 from orgmind.easywiki.graph_lite import build_graph
 
@@ -23,17 +23,6 @@ FIXED_SECTIONS = [
     "overview", "decisions_experience", "knowledge_graph",
     "agents_skills", "files", "progress_table", "agent_inbox"
 ]
-
-
-def _auth(authorization):
-    """Decode JWT token — self-contained, avoids circular import with main_sqlite."""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(401, "MISSING_AUTH")
-    import jwt as pyjwt
-    try:
-        return pyjwt.decode(authorization[7:], JWT_SECRET, algorithms=[JWT_ALGORITHM])
-    except Exception:
-        raise HTTPException(401, "INVALID_TOKEN")
 
 
 def _project_access(db, project_id: str, org_id: str):
@@ -59,7 +48,7 @@ def _entry_access(db, entry_id: str, org_id: str):
 # ============================================================
 @router.get("/projects")
 def list_projects(authorization: str = Header(None)):
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     rows = db.execute(
         "SELECT id, name, health, created_at FROM easywiki_projects WHERE org_id=? ORDER BY created_at DESC",
@@ -70,7 +59,7 @@ def list_projects(authorization: str = Header(None)):
 
 @router.post("/projects")
 def create_project(body: dict = Body(...), authorization: str = Header(None)):
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     pid = str(uuid.uuid4())
     name = body["name"]
 
@@ -97,7 +86,7 @@ def create_project(body: dict = Body(...), authorization: str = Header(None)):
 
 @router.get("/projects/{project_id}/manifest")
 def get_project_manifest(project_id: str, authorization: str = Header(None)):
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     proj = db.execute(
         "SELECT id FROM easywiki_projects WHERE id=? AND org_id=?",
@@ -121,7 +110,7 @@ def get_project_manifest(project_id: str, authorization: str = Header(None)):
 # ============================================================
 @router.get("/projects/{project_id}/sections/{section}/pages")
 def list_section_pages(project_id: str, section: str, authorization: str = Header(None)):
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     proj = db.execute("SELECT id FROM easywiki_projects WHERE id=? AND org_id=?", (project_id, payload["org_id"])).fetchone()
     if not proj:
@@ -142,7 +131,7 @@ def list_section_pages(project_id: str, section: str, authorization: str = Heade
 
 @router.post("/projects/{project_id}/sections/{section}/pages")
 def create_page(project_id: str, section: str, body: dict = Body(...), authorization: str = Header(None)):
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     proj = db.execute("SELECT id FROM easywiki_projects WHERE id=? AND org_id=?", (project_id, payload["org_id"])).fetchone()
     if not proj:
@@ -173,7 +162,7 @@ def create_page(project_id: str, section: str, body: dict = Body(...), authoriza
     return {"id": page_id}
 @router.get("/pages/{page_id}")
 def get_page(page_id: str, authorization: str = Header(None)):
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     page = db.execute(
         "SELECT p.id, p.title, p.project_id, p.section, p.content_ref, pc.blocksuite_doc, pc.current_version_id "
@@ -199,7 +188,7 @@ def update_page(page_id: str, body: dict = Body(...), authorization: str = Heade
     Runs a real 3-way merge (Section 3.5/6.6) when the submitted based_on_version
     differs from the current version — NOT a naive "reject on any mismatch" lock.
     """
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     page = db.execute(
         "SELECT p.id, p.project_id, p.content_ref, pc.blocksuite_doc, pc.current_version_id, p.title "
@@ -249,7 +238,7 @@ def update_page(page_id: str, body: dict = Body(...), authorization: str = Heade
 @router.post("/pages/{page_id}/clone-mount")
 def clone_mount_page(page_id: str, body: dict = Body(...), authorization: str = Header(None)):
     """Clone-mount a page into another project section (shared content_ref)."""
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     src = db.execute(
         "SELECT p.id, p.title, p.content_ref FROM easywiki_pages p JOIN easywiki_projects pr ON p.project_id=pr.id "
@@ -287,7 +276,7 @@ def create_pending_entry(body: dict = Body(...), authorization: str = Header(Non
     Processing pipeline: clean_text → detect_pii → hash dedup → quality_score.
     CRITICAL: Status is ALWAYS "pending", NEVER auto-published.
     """
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     project_id = body.get("project_id")
     if not project_id:
@@ -329,7 +318,7 @@ def create_pending_entry(body: dict = Body(...), authorization: str = Header(Non
 
 @router.get("/projects/{project_id}/pending-entries")
 def list_pending_entries(project_id: str, status: str = Query("pending"), authorization: str = Header(None)):
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     proj = db.execute("SELECT id FROM easywiki_projects WHERE id=? AND org_id=?", (project_id, payload["org_id"])).fetchone()
     if not proj:
@@ -345,7 +334,7 @@ def list_pending_entries(project_id: str, status: str = Query("pending"), author
 
 @router.get("/pending-entries/{entry_id}")
 def get_pending_entry(entry_id: str, authorization: str = Header(None)):
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     row = db.execute(
         "SELECT id, session_id, tool_name, entry_type, target_section, raw_content, file_refs, "
@@ -367,7 +356,7 @@ def approve_pending_entry(entry_id: str, body: Optional[dict] = Body(None), auth
     the field's current value using the entry's based_on_version as the merge base,
     instead of unconditionally overwriting.
     """
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     entry = _entry_access(db, entry_id, payload["org_id"])
     if entry["status"] != "pending":
@@ -469,7 +458,7 @@ def approve_pending_entry(entry_id: str, body: Optional[dict] = Body(None), auth
 
 @router.post("/pending-entries/{entry_id}/reject")
 def reject_pending_entry(entry_id: str, body: dict = Body(...), authorization: str = Header(None)):
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     entry = _entry_access(db, entry_id, payload["org_id"])
     if entry["status"] != "pending":
@@ -485,7 +474,7 @@ def reject_pending_entry(entry_id: str, body: dict = Body(...), authorization: s
 
 @router.post("/pending-entries/batch-approve")
 def batch_approve_pending_entries(body: dict = Body(...), authorization: str = Header(None)):
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     ids = body.get("ids", [])
     approved, failed = [], []
@@ -530,7 +519,7 @@ def batch_approve_pending_entries(body: dict = Body(...), authorization: str = H
 # ============================================================
 @router.get("/conflicts")
 def list_conflicts(status: str = Query("open"), authorization: str = Header(None)):
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     rows = db.execute(
         "SELECT id, target_type, target_id, base_version_id, human_version_id, agent_version_id, "
@@ -542,7 +531,7 @@ def list_conflicts(status: str = Query("open"), authorization: str = Header(None
 
 @router.post("/conflicts/{conflict_id}/resolve")
 def resolve_conflict(conflict_id: str, body: dict = Body(...), authorization: str = Header(None)):
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     conflict = db.execute("SELECT * FROM easywiki_conflicts WHERE id=?", (conflict_id,)).fetchone()
     if not conflict:
@@ -566,7 +555,7 @@ def resolve_conflict(conflict_id: str, body: dict = Body(...), authorization: st
 # ============================================================
 @router.get("/versions")
 def list_versions(target_type: str = Query(...), target_id: str = Query(...), authorization: str = Header(None)):
-    _auth(authorization)
+    decode_auth_header(authorization)
     db = get_db()
     rows = db.execute(
         "SELECT id, author_type, author_ref, created_at, "
@@ -583,7 +572,7 @@ def list_versions(target_type: str = Query(...), target_id: str = Query(...), au
 @router.get("/projects/{project_id}/graph")
 def get_project_graph(project_id: str, authorization: str = Header(None)):
     """Return graph data (nodes + edges) for D3.js visualization."""
-    payload = _auth(authorization)
+    payload = decode_auth_header(authorization)
     db = get_db()
     proj = db.execute("SELECT id FROM easywiki_projects WHERE id=? AND org_id=?", (project_id, payload["org_id"])).fetchone()
     if not proj:

@@ -41,6 +41,7 @@ from orgmind.governance.pii import detect_pii, upgrade_sensitivity
 from orgmind.governance.quality import compute_quality_score, QualityInput
 from orgmind.config import EMBEDDING_MODEL, EMBEDDING_DIM, JWT_SECRET, JWT_ALGORITHM, JWT_EXPIRE_MINUTES
 from orgmind.auth.password import hash_password, verify_password
+from orgmind.auth import decode_auth_header
 from orgmind.services.audit import log_audit
 from orgmind.services.write_queue import execute_write
 
@@ -107,14 +108,7 @@ def _create_token(user_id, org_id, role, department_id=None, project_ids=None):
                "iat": datetime.now(timezone.utc)}
     return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
 
-def _get_user_from_token(auth: str) -> Dict:
-    if not auth or not auth.startswith("Bearer "):
-        raise HTTPException(401, "MISSING_AUTH")
-    import jwt as pyjwt
-    try:
-        return pyjwt.decode(auth[7:], JWT_SECRET, algorithms=[JWT_ALGORITHM])
-    except Exception:
-        raise HTTPException(401, "INVALID_TOKEN")
+# _get_user_from_token is now decode_auth_header from orgmind.auth
 
 def _get_visible_depts(db, payload):
     return db.get_visible_departments(payload['user_id'], payload['role'], payload.get('department_id'), payload['org_id'])
@@ -170,7 +164,7 @@ def _sso_dingtalk(code: str):
 # === 记忆 CRUD ===
 @app.post("/api/v1/memory")
 def create_memory(req: MemoryReq, authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     db = get_db()
     cleaned, meta = clean_text(req.content)
     ch = compute_content_hash(cleaned)
@@ -201,7 +195,7 @@ def create_memory(req: MemoryReq, authorization: str = Header(None)):
 
 @app.patch("/api/v1/memory/{memory_id}")
 def update_memory(memory_id: str, req: UpdateMemoryReq, authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     db = get_db()
     mem = db.execute("SELECT * FROM memories WHERE id=? AND org_id=?", (memory_id, payload['org_id'])).fetchone()
     if not mem:
@@ -217,7 +211,7 @@ def update_memory(memory_id: str, req: UpdateMemoryReq, authorization: str = Hea
 
 @app.delete("/api/v1/memory/{memory_id}")
 def delete_memory(memory_id: str, authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     db = get_db()
     mem = db.execute("SELECT * FROM memories WHERE id=? AND org_id=?", (memory_id, payload['org_id'])).fetchone()
     if not mem:
@@ -230,7 +224,7 @@ def delete_memory(memory_id: str, authorization: str = Header(None)):
 
 @app.post("/api/v1/memories/recent")
 def recent_memories(req: RecentReq, authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     db = get_db()
     visible_depts = _get_visible_depts(db, payload)
     shared_ids = _get_shared_ids(db, payload)
@@ -239,7 +233,7 @@ def recent_memories(req: RecentReq, authorization: str = Header(None)):
 
 @app.post("/api/v1/retrieve")
 def retrieve_api(req: RetrieveReq, authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     db = get_db()
     visible_depts = _get_visible_depts(db, payload)
     shared_ids = _get_shared_ids(db, payload)
@@ -279,7 +273,7 @@ def retrieve_api(req: RetrieveReq, authorization: str = Header(None)):
 
 @app.post("/api/v1/memory/share")
 def share_memory(req: ShareReq, authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     db = get_db()
     if payload['role'] not in ('admin', 'manager'):
         raise HTTPException(403, "Only admin or manager can share")
@@ -306,7 +300,7 @@ def share_memory(req: ShareReq, authorization: str = Header(None)):
 
 @app.post("/api/v1/session/auto-record")
 def auto_record(req: AutoRecordReq, authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     db = get_db()
     from orgmind.services.auto_memory import extract_memories_from_session, detect_repeated_pattern
     extracted = extract_memories_from_session(req.session_text)
@@ -356,14 +350,14 @@ def auto_record(req: AutoRecordReq, authorization: str = Header(None)):
 # === Skill / Agent ===
 @app.post("/api/v1/skill/match")
 def skill_match(query: str = Body(...), top_k: int = Body(5), authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     db = get_db()
     rows = db.execute("SELECT id,name,description,tags,object_type,usage_count,status FROM artifacts WHERE org_id=? AND status='published' ORDER BY usage_count DESC LIMIT ?", (payload['org_id'], top_k)).fetchall()
     return {"matched": [{"id": r['id'], "name": r['name'], "description": r['description'], "object_type": r['object_type'], "status": r['status']} for r in rows]}
 
 @app.post("/api/v1/agent/invoke")
 def agent_invoke(agent_name: str = Body(...), authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     db = get_db()
     agent = db.execute("SELECT * FROM artifacts WHERE org_id=? AND name=? AND object_type='agent' AND status='published'", (payload['org_id'], agent_name)).fetchone()
     if not agent: raise HTTPException(404, f"Agent '{agent_name}' not found")
@@ -371,25 +365,25 @@ def agent_invoke(agent_name: str = Body(...), authorization: str = Header(None))
 
 @app.get("/api/v1/agents/detect")
 def detect_agents_endpoint(authorization: str = Header(None)):
-    _get_user_from_token(authorization or "")
+    decode_auth_header(authorization or "")
     return {"agents": detect_agents(), "total": len(detect_agents())}
 
 @app.post("/api/v1/agents/connect")
 def connect_agent(authorization: str = Header(None), agent_id: str = Body(..., embed=True)):
-    _get_user_from_token(authorization or "")
+    decode_auth_header(authorization or "")
     return {"connected": generate_agent_config(agent_id), "status": "ok"}
 
 # === 组织管理 ===
 @app.get("/api/v1/org/departments")
 def list_departments(authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     db = get_db()
     rows = db.execute("SELECT id, name, parent_id FROM departments WHERE org_id=? ORDER BY name", (payload['org_id'],)).fetchall()
     return {"departments": [{"id": r['id'], "name": r['name'], "parent_id": r['parent_id']} for r in rows]}
 
 @app.post("/api/v1/org/departments")
 def create_department(req: CreateDeptReq, authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     if payload['role'] not in ('admin', 'manager'): raise HTTPException(403, "Only admin or manager can create departments")
     db = get_db()
     dept_id = str(uuid.uuid4())
@@ -400,7 +394,7 @@ def create_department(req: CreateDeptReq, authorization: str = Header(None)):
 
 @app.get("/api/v1/org/users")
 def list_users(authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     if payload['role'] not in ('admin', 'manager'): raise HTTPException(403, "Only admin or manager can list users")
     db = get_db()
     rows = db.execute("SELECT u.id, u.email, u.name, u.role, u.department_id, d.name as dept_name FROM users u LEFT JOIN departments d ON u.department_id=d.id WHERE u.org_id=?", (payload['org_id'],)).fetchall()
@@ -408,7 +402,7 @@ def list_users(authorization: str = Header(None)):
 
 @app.post("/api/v1/org/users")
 def create_user(req: CreateUserReq, authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     if payload['role'] != 'admin': raise HTTPException(403, "Only admin can create users")
     db = get_db()
     import secrets as _s
@@ -423,7 +417,7 @@ def create_user(req: CreateUserReq, authorization: str = Header(None)):
 # === 审计日志 ===
 @app.get("/api/v1/org/audit-logs")
 def get_audit_logs(limit: int = 50, offset: int = 0, authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     if payload['role'] != 'admin': raise HTTPException(403, "Only admin can view audit logs")
     db = get_db()
     logs = db.get_audit_logs(payload['org_id'], limit, offset)
@@ -433,7 +427,7 @@ def get_audit_logs(limit: int = 50, offset: int = 0, authorization: str = Header
 @app.post("/api/v1/org/invite-codes")
 def create_invite_code(req: CreateInviteCodeReq, authorization: str = Header(None)):
     """管理员创建邀请码，自动分配部门+角色+权限。上级可用同样方式为下级部门发码。"""
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     if payload['role'] not in ('admin', 'manager'):
         raise HTTPException(403, "Only admin or manager can create invite codes")
     db = get_db()
@@ -448,7 +442,7 @@ def create_invite_code(req: CreateInviteCodeReq, authorization: str = Header(Non
 
 @app.get("/api/v1/org/invite-codes")
 def list_invite_codes(authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     if payload['role'] not in ('admin', 'manager'):
         raise HTTPException(403, "Only admin or manager can list invite codes")
     db = get_db()
@@ -480,7 +474,7 @@ def register_with_invite(req: RegisterWithInviteReq):
 # === 权限信息 ===
 @app.get("/api/v1/org/my-permissions")
 def my_permissions(authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     db = get_db()
     visible_depts = _get_visible_depts(db, payload)
     shared_ids = _get_shared_ids(db, payload)
@@ -498,7 +492,7 @@ class TokenLogReq(BaseModel):
 
 @app.post("/api/v1/telemetry/token-usage")
 def log_token_usage(req: TokenLogReq, authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     from orgmind.services.employee_profile import record_token_usage
     record_token_usage(payload['user_id'], req.model, req.prompt_tokens, req.completion_tokens, req.task_type, req.tool_calls, req.session_id)
     return {"status": "recorded"}
@@ -506,13 +500,13 @@ def log_token_usage(req: TokenLogReq, authorization: str = Header(None)):
 # === 员工画像 & Token评估 ===
 @app.get("/api/v1/org/employee-profile")
 def employee_profile(authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     from orgmind.services.employee_profile import get_employee_profile
     return get_employee_profile(payload['user_id'])
 
 @app.get("/api/v1/org/team-token-report")
 def team_token_report(authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     if payload['role'] not in ('admin', 'manager'): raise HTTPException(403, "Admin or manager only")
     from orgmind.services.employee_profile import get_team_token_report
     return get_team_token_report(payload['org_id'])
@@ -527,7 +521,7 @@ class FileImportReq(BaseModel):
 @app.post("/api/v1/org/import-file")
 def import_file(req: FileImportReq, authorization: str = Header(None)):
     """导入企业文件: PDF/Word/TXT/Markdown → 自动分块 → 写记忆"""
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     db = get_db()
     import base64
     try:
@@ -565,7 +559,7 @@ def import_file(req: FileImportReq, authorization: str = Header(None)):
 # === 数据导出 ===
 @app.get("/api/v1/org/export")
 def export_data(authorization: str = Header(None)):
-    payload = _get_user_from_token(authorization or "")
+    payload = decode_auth_header(authorization or "")
     if payload['role'] != 'admin': raise HTTPException(403, "Only admin can export data")
     db = get_db()
     data = db.export_all(payload['org_id'])
