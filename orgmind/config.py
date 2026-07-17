@@ -11,11 +11,20 @@ SECRET_FILE = CONFIG_DIR / "secret.key"
 CONFIG_FILE = CONFIG_DIR / "config.json"
 
 def _load_or_create_secret() -> str:
+    # Priority 1: environment variable (for Docker/CI)
+    env_secret = os.getenv("ORGMIND_JWT_SECRET")
+    if env_secret and len(env_secret) >= 16:
+        return env_secret
+    # Priority 2: file-based secret
     if SECRET_FILE.exists():
         return SECRET_FILE.read_text().strip()
+    # Priority 3: generate new secret
     s = secrets.token_hex(32)
-    SECRET_FILE.write_text(s)
-    SECRET_FILE.chmod(0o600)
+    try:
+        SECRET_FILE.write_text(s)
+        SECRET_FILE.chmod(0o600)
+    except (OSError, PermissionError):
+        pass  # Windows or read-only filesystem
     return s
 
 def _load_or_create_config() -> dict:

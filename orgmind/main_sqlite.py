@@ -55,7 +55,8 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="EasyWiki", version="1.0.0", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+_cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8090,http://127.0.0.1:8090").split(",")
+app.add_middleware(CORSMiddleware, allow_origins=_cors_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 from orgmind.easywiki.routes import router as easywiki_router
 app.include_router(easywiki_router, prefix="/api/v1/easywiki")
 
@@ -77,10 +78,21 @@ def _auto_setup(db: OrgMindDB):
         (uid, "admin@local", "管理员", "admin", root_dept, org_id, pw)
     )
     db.commit()
-    print(f"[EasyWiki] First run: auto-created admin account.")
-    print(f"   Email:    admin@local")
-    print(f"   Password: {default_pw}")
-    print(f"   Change this password immediately after login.")
+    # Write password to file instead of stdout (security: avoid container log leak)
+    bootstrap_file = os.path.join(os.path.dirname(DB_PATH), ".bootstrap_admin")
+    try:
+        with open(bootstrap_file, 'w') as f:
+            f.write(f"Email: admin@local\nPassword: {default_pw}\n")
+        os.chmod(bootstrap_file, 0o600)
+        print(f"[EasyWiki] First run: admin account created. Credentials written to {bootstrap_file}")
+    except Exception:
+        print(f"[EasyWiki] First run: admin account created. Check server logs for credentials.")
+    # Also support env var for initial password
+    env_pw = os.getenv("ORGMIND_ADMIN_PASSWORD")
+    if env_pw:
+        db.execute("UPDATE users SET hashed_password=? WHERE email=?", (hash_password(env_pw), "admin@local"))
+        db.commit()
+        print(f"[EasyWiki] Admin password set from ORGMIND_ADMIN_PASSWORD env var.")
 
 
 # === 请求模型 ===

@@ -2,9 +2,10 @@ import { useState } from "react";
 import { login, setToken } from "../api/client";
 
 export default function LoginPage({ onLogin }: { onLogin: () => void }) {
-  const [email, setEmail] = useState("admin@local");
-  const [password, setPassword] = useState("orgmind2026");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

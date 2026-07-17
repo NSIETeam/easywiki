@@ -462,7 +462,12 @@ class OrgMindDB:
         tables = {}
         for table in ['organizations', 'departments', 'users', 'memories', 'artifacts']:
             rows = self.execute(f"SELECT * FROM {table} WHERE {'id' if table == 'organizations' else 'org_id'}=?", (org_id,)).fetchall()
-            tables[table] = [dict(r) for r in rows]
+            items = [dict(r) for r in rows]
+            # Security: strip hashed_password from users export
+            if table == 'users':
+                for item in items:
+                    item.pop('hashed_password', None)
+            tables[table] = items
         # memory_shares: 通过 JOIN memories 过滤
         try:
             share_rows = self.execute(

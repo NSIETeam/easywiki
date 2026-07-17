@@ -283,6 +283,7 @@ def create_pending_entry(body: dict = Body(...), authorization: str = Header(Non
         raise HTTPException(400, "project_id is required")
     _project_access(db, project_id, payload["org_id"])
     raw_content = body.get("content", "")
+    cleaned, _ = clean_text(raw_content)
     ch = compute_content_hash(cleaned)
     pii_hits = detect_pii(cleaned)
     sensitivity = upgrade_sensitivity("normal", pii_hits)
