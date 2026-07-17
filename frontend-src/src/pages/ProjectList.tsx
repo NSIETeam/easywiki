@@ -40,7 +40,7 @@ export default function ProjectList() {
           >
             <div className="font-medium text-[14px] text-ew-blue">{p.name}</div>
             <div className="text-[12px] text-ew-gray-text mt-1">
-              {p.health === "on_track" ? "✅ 正常" : p.health === "at_risk" ? "⚠️ 风险" : "🔴 受阻"}
+              {p.health === "on_track" ? "正常" : p.health === "at_risk" ? "风险" : "受阻"}
               <span className="ml-2">{p.created_at?.slice(0, 10)}</span>
             </div>
           </a>

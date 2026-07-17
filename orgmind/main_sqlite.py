@@ -1,15 +1,15 @@
 """
-OrgMind Tier0 Solo FastAPI v2.1 — 企业级
-- bcrypt 密码 + 随机 JWT 密钥
-- 真实 sentence-transformers embedding
-- LLM 自动记忆提取
-- 记忆编辑/删除/冲突检测
-- jieba 中文分词 + FTS5
-- 审计日志
-- 数据导出
-- SSO OAuth2 回调结构
-- 分层 RBAC 权限
-- 单端口 SPA + API
+EasyWiki v1.0 — Agent-Driven Knowledge Management
+- bcrypt password + random JWT key
+- sentence-transformers embedding
+- LLM auto memory extraction
+- Memory edit/delete/conflict detection
+- jieba Chinese NLP + FTS5
+- Audit logs
+- Data export
+- SSO OAuth2 callback scaffold
+- Hierarchical RBAC
+- Single-port SPA + API
 """
 import sys, os, uuid, json, hashlib, math, time
 from pathlib import Path
@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
         _auto_setup(db)
     yield
 
-app = FastAPI(title="OrgMind", version="2.1.0", lifespan=lifespan)
+app = FastAPI(title="EasyWiki", version="1.0.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:3000"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 from orgmind.easywiki.routes import router as easywiki_router
 app.include_router(easywiki_router, prefix="/api/v1/easywiki")
@@ -150,10 +150,10 @@ def _get_shared_ids(db, payload):
 
 # === 路由 ===
 @app.get("/health")
-def health(): return {"status": "healthy", "backend": "SQLite", "version": "2.1.0"}
+def health(): return {"status": "healthy", "backend": "SQLite", "version": "1.0.0", "service": "EasyWiki"}
 
 @app.get("/api/v1/health")
-def api_health(): return {"status": "ok", "service": "OrgMind", "version": "2.1.0"}
+def api_health(): return {"status": "ok", "service": "EasyWiki", "version": "1.0.0"}
 
 @app.post("/api/v1/auth/login")
 def login(req: LoginReq):

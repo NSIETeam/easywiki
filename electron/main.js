@@ -16,7 +16,7 @@ const http = require('http');
 let mainWindow = null;
 let backendProcess = null;
 const PORT = 8080;
-const APP_NAME = 'OrgMind';
+const APP_NAME = 'EasyWiki';
 const IS_PACKAGED = app.isPackaged;
 
 // ============ Backend ============
@@ -58,7 +58,7 @@ function startBackend() {
 
     const env = {
         ...process.env,
-        ORGMIND_DB_PATH: path.join(app.getPath('userData'), 'orgmind.db'),
+        ORGMIND_DB_PATH: path.join(app.getPath('userData'), 'easywiki.db'),
         ORGMIND_CONFIG_DIR: path.join(app.getPath('userData'), 'config'),
     };
 

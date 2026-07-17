@@ -68,3 +68,7 @@ export const resolveConflict = (id: string, resolution: string, mergedContent?: 
 // Versions
 export const listVersions = (targetType: string, targetId: string) =>
   request<{ versions: any[] }>("GET", `/api/v1/easywiki/versions?target_type=${targetType}&target_id=${targetId}`);
+
+// Knowledge Graph
+export const getProjectGraph = (pid: string) =>
+  request<{ nodes: any[]; edges: any[] }>("GET", `/api/v1/easywiki/projects/${pid}/graph`);

@@ -16,7 +16,7 @@ from mcp.types import Tool, TextContent
 BASE_URL = "http://127.0.0.1:8080"
 MCP_TOKEN = os.environ.get("EASYWIKI_MCP_TOKEN", "")
 if not MCP_TOKEN:
-    token_path = os.path.expanduser("~/.orgmind/mcp_token")
+    token_path = os.path.expanduser("~/.easywiki/mcp_token")
     try:
         with open(token_path, "r", encoding="utf-8") as token_file:
             MCP_TOKEN = token_file.read().strip()

@@ -11,7 +11,7 @@ from contextlib import contextmanager
 import threading
 import os
 
-DB_PATH = os.getenv("ORGMIND_DB_PATH", os.path.expanduser("~/.orgmind/orgmind.db"))
+DB_PATH = os.getenv("ORGMIND_DB_PATH", os.path.expanduser("~/.easywiki/easywiki.db"))
 
 
 class OrgMindDB:

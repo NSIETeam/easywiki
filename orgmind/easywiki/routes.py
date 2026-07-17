@@ -575,3 +575,37 @@ def list_versions(target_type: str = Query(...), target_id: str = Query(...), au
         (target_type, target_id)
     ).fetchall()
     return {"versions": [dict(r) for r in rows]}
+
+
+# ============================================================
+# Section 5.4 — Knowledge Graph API
+# ============================================================
+@router.get("/projects/{project_id}/graph")
+def get_project_graph(project_id: str, authorization: str = Header(None)):
+    """Return graph data (nodes + edges) for D3.js visualization."""
+    payload = _auth(authorization)
+    db = get_db()
+    proj = db.execute("SELECT id FROM easywiki_projects WHERE id=? AND org_id=?", (project_id, payload["org_id"])).fetchone()
+    if not proj:
+        raise HTTPException(404, "Project not found")
+
+    entities = db.execute(
+        "SELECT id, name, entity_type FROM easywiki_graph_entities WHERE project_id=? LIMIT 200",
+        (project_id,)
+    ).fetchall()
+
+    entity_ids = [r["id"] for r in entities]
+    if not entity_ids:
+        return {"nodes": [], "edges": []}
+
+    placeholders = ",".join("?" * len(entity_ids))
+    relations = db.execute(
+        f"SELECT id, from_entity_id, to_entity_id, relation FROM easywiki_graph_relations "
+        f"WHERE from_entity_id IN ({placeholders}) OR to_entity_id IN ({placeholders}) LIMIT 500",
+        entity_ids + entity_ids
+    ).fetchall()
+
+    return {
+        "nodes": [{"id": r["id"], "label": r["name"], "type": r["entity_type"]} for r in entities],
+        "edges": [{"id": r["id"], "source": r["from_entity_id"], "target": r["to_entity_id"], "label": r["relation"]} for r in relations]
+    }

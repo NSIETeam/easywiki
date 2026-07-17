@@ -2,12 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  color-scheme: light;
+  --ew-blue: #1a73e8;
+  --ew-blue-soft: #e8f0fe;
+  --ew-surface: #ffffff;
+  --ew-canvas: #f8f9fa;
+  --ew-border: #dadce0;
+  --ew-text: #202124;
+  --ew-muted: #5f6368;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   font-size: 13px;
-  background-color: #f8f9fa;
-  color: #202124;
+  background: var(--ew-canvas);
+  color: var(--ew-text);
 }
-a { text-decoration: none; }
+a { text-decoration: none; color: inherit; }
 * { box-sizing: border-box; }
+button, input, textarea, select { font: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
