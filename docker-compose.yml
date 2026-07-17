@@ -1,0 +1,20 @@
+services:
+  easywiki:
+    build: .
+    container_name: easywiki
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+    volumes:
+      - easywiki-data:/data
+    environment:
+      - ORGMIND_DB_PATH=/data/easywiki.db
+      - ORGMIND_JWT_SECRET=${ORGMIND_JWT_SECRET:-change-me-in-production}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  easywiki-data:
