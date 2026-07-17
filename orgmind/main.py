@@ -1,5 +1,6 @@
 """
-OrgMind FastAPI 入口 (生产级)
+EasyWiki FastAPI entry point (production / cloud deployment)
+Supports PostgreSQL + Redis via config.py and the async database layer.
 """
 import signal
 import asyncio
@@ -13,14 +14,15 @@ from orgmind.middleware.rate_limit import rate_limit_middleware
 from orgmind.middleware.metrics import metrics_middleware, render_prometheus_metrics, get_metrics
 from orgmind.middleware.health import full_health_check, HealthStatus
 from orgmind.middleware.logging import setup_logging, logger
-from orgmind.api.routes import router
+from orgmind.api.routes import router as api_router
+from orgmind.easywiki.routes import router as easywiki_router
 from orgmind.config_production import LOG_LEVEL, GRACEFUL_SHUTDOWN_TIMEOUT
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     setup_logging(LOG_LEVEL)
-    logger.info("OrgMind starting", extra={"extra_fields": {"event": "startup"}})
+    logger.info("EasyWiki starting", extra={"extra_fields": {"event": "startup"}})
 
     try:
         from orgmind.graph.engine import get_graph_engine
@@ -31,17 +33,17 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    logger.info("OrgMind shutting down", extra={"extra_fields": {"event": "shutdown"}})
+    logger.info("EasyWiki shutting down", extra={"extra_fields": {"event": "shutdown"}})
     await asyncio.sleep(GRACEFUL_SHUTDOWN_TIMEOUT)
 
 
 app = FastAPI(
-    title="OrgMind — Agent 驱动的组织知识库",
+    title="EasyWiki — Agent-Driven Knowledge Management",
     version="1.0.0",
     lifespan=lifespan,
 )
 
-# 中间件注册顺序: CORS → RLS → RateLimit → Metrics (先业务后观测)
+# Middleware order: CORS -> RLS -> RateLimit -> Metrics
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -66,7 +68,6 @@ async def metrics_middleware_wrapper(request: Request, call_next):
     return await metrics_middleware(request, call_next)
 
 
-# 附加端点
 @app.get("/health", tags=["ops"])
 async def health() -> HealthStatus:
     return await full_health_check()
@@ -86,7 +87,9 @@ async def ready():
     return {"status": "ready"}
 
 
-app.include_router(router)
+# Mount both API sets
+app.include_router(api_router)                        # /api/v1/* (OrgMind legacy + session/agent/memory)
+app.include_router(easywiki_router, prefix="/api/v1/easywiki")  # /api/v1/easywiki/* (EasyWiki core)
 
 
 if __name__ == "__main__":

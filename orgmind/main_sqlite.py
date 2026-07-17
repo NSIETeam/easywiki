@@ -1,15 +1,24 @@
 """
-EasyWiki v1.0 — Agent-Driven Knowledge Management
+EasyWiki v1.0 — Self-Hosted Entry Point (SQLite)
+================================================================
+DEPLOYMENT MODE: self-hosted / private server
+DATABASE: SQLite (zero-dependency, single binary)
+USAGE: python -m uvicorn orgmind.main_sqlite:app --host 0.0.0.0 --port 8080
+
+For cloud/multi-tenant deployment with PostgreSQL + Redis, use:
+    python -m uvicorn orgmind.main:app --host 0.0.0.0 --port 8080
+
+Features:
 - bcrypt password + random JWT key
 - sentence-transformers embedding
 - LLM auto memory extraction
 - Memory edit/delete/conflict detection
 - jieba Chinese NLP + FTS5
-- Audit logs
-- Data export
+- Audit logs + Data export
 - SSO OAuth2 callback scaffold
 - Hierarchical RBAC
 - Single-port SPA + API
+- Full EasyWiki project management, agent inbox, knowledge graph
 """
 import sys, os, uuid, json, hashlib, math, time
 from pathlib import Path
@@ -52,60 +61,26 @@ app.include_router(easywiki_router, prefix="/api/v1/easywiki")
 
 _FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
 
-# === 首次配置 ===
+# === 首次配置 (最小化: 仅创建组织和一个管理员, 无任何预设数据) ===
 def _auto_setup(db: OrgMindDB):
     org_id = str(uuid.uuid4())
     db.execute("INSERT INTO organizations (id,name) VALUES (?,?)", (org_id, "我的组织"))
     root_dept = str(uuid.uuid4())
-    tech_dept = str(uuid.uuid4())
-    frontend_dept = str(uuid.uuid4())
-    backend_dept = str(uuid.uuid4())
-    market_dept = str(uuid.uuid4())
-    for did, name, pid in [(root_dept,"总公司",None),(tech_dept,"技术部",root_dept),(frontend_dept,"前端组",tech_dept),(backend_dept,"后端组",tech_dept),(market_dept,"市场部",root_dept)]:
-        db.execute("INSERT INTO departments (id,name,parent_id,org_id) VALUES (?,?,?,?)", (did,name,pid,org_id))
+    db.execute("INSERT INTO departments (id,name,parent_id,org_id) VALUES (?,?,?,?)", (root_dept, "总公司", None, org_id))
 
-    pw = hash_password("orgmind2026")
-    users = [
-        (str(uuid.uuid4()), "admin@local", "管理员", "admin", root_dept),
-        (str(uuid.uuid4()), "tech@local", "技术负责人", "manager", tech_dept),
-        (str(uuid.uuid4()), "dev@local", "前端工程师", "employee", frontend_dept),
-        (str(uuid.uuid4()), "backend@local", "后端工程师", "employee", backend_dept),
-        (str(uuid.uuid4()), "market@local", "市场经理", "manager", market_dept),
-    ]
-    for uid, email, name, role, dept in users:
-        db.execute("INSERT INTO users (id,email,name,role,department_id,org_id,hashed_password) VALUES (?,?,?,?,?,?,?)", (uid,email,name,role,dept,org_id,pw))
+    import secrets as _secrets
+    default_pw = _secrets.token_urlsafe(12)
+    pw = hash_password(default_pw)
+    uid = str(uuid.uuid4())
+    db.execute(
+        "INSERT INTO users (id,email,name,role,department_id,org_id,hashed_password) VALUES (?,?,?,?,?,?,?)",
+        (uid, "admin@local", "管理员", "admin", root_dept, org_id, pw)
+    )
     db.commit()
-
-    # Demo 记忆
-    user_map = {}
-    for row in db.execute("SELECT email, id FROM users WHERE org_id=?", (org_id,)).fetchall():
-        user_map[row['email'].split('@')[0]] = row['id']
-
-    demo = [
-        (root_dept,"admin","org","decision","公司年度战略: 2026年Q1推出 OrgMind 企业版, 目标客户 50 家"),
-        (root_dept,"admin","org","decision","组织架构调整: 技术部拆分为前端组和后端组, 各设一名 manager"),
-        (root_dept,"admin","org","best_practice","所有对外 API 必须经过安全审计才能上线, 包括内部工具"),
-        (tech_dept,"tech","department","decision","技术部决定采用 FastAPI + SQLite 作为 Tier0 技术栈, 零依赖部署"),
-        (tech_dept,"tech","department","architecture","系统架构: 四层记忆模型 (工作记忆/情景记忆/语义记忆/程序记忆)"),
-        (tech_dept,"tech","department","best_practice","代码提交前必须跑通本地测试, CI 只是最后一道防线"),
-        (tech_dept,"tech","department","bug_fix","权限过滤函数 rls_filter 之前写了但从未调用, 已修复接入所有检索端点"),
-        (frontend_dept,"dev","department","decision","前端技术栈: React + TypeScript + Tailwind CSS, 单色蓝主题"),
-        (frontend_dept,"dev","department","best_practice","所有 UI 组件使用 13px 基础字号, 间距用 4px 倍数"),
-        (frontend_dept,"dev","department","bug_fix","MemoryExplorer 页面初始加载空白, 原因是没调 useEffect 加载 recent, 已修复"),
-        (backend_dept,"backend","department","decision","后端数据库: SQLite 替代 PostgreSQL, numpy 替代 pgvector"),
-        (backend_dept,"backend","department","best_practice","所有 SQL 查询必须参数化, 禁止字符串拼接"),
-        (market_dept,"market","department","decision","市场部决定参加猎豹 AI 实操营, 现场给客户演示 OrgMind"),
-        (market_dept,"market","department","best_practice","客户演示必须让客户亲手操作, 不能只看讲师演示"),
-    ]
-    for dept_id, user_key, scope, mem_type, content in demo:
-        cleaned, _ = clean_text(content)
-        ch = compute_content_hash(cleaned)
-        # Embedding deferred — model loads lazily on first search
-        mid = str(uuid.uuid4())
-        db.execute("INSERT INTO memories (id,org_id,department_id,type,scope,content,summary,content_hash,embedding,sensitivity,quality_score,status,created_by,extra_metadata) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (mid, org_id, dept_id, mem_type, scope, cleaned, cleaned[:200], ch, None, 'normal', 0.8, 'active', user_map.get(user_key, users[0][0]), json.dumps({"demo": True})))
-        db.index_memory_fts(mid, cleaned)
-    db.commit()
+    print(f"[EasyWiki] First run: auto-created admin account.")
+    print(f"   Email:    admin@local")
+    print(f"   Password: {default_pw}")
+    print(f"   Change this password immediately after login.")
 
 
 # === 请求模型 ===
