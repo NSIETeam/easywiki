@@ -55,11 +55,11 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title="EasyWiki", version="1.0.0", lifespan=lifespan)
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:8080", "http://127.0.0.1:8080", "http://localhost:3000"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 from orgmind.easywiki.routes import router as easywiki_router
 app.include_router(easywiki_router, prefix="/api/v1/easywiki")
 
-_FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
+_FRONTEND_DIST = Path(__file__).parent.parent / "frontend-src" / "dist"
 
 # === 首次配置 (最小化: 仅创建组织和一个管理员, 无任何预设数据) ===
 def _auto_setup(db: OrgMindDB):
