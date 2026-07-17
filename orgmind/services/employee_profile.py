@@ -9,7 +9,7 @@ import time
 from typing import Dict, List, Optional
 from collections import defaultdict
 from datetime import datetime, timedelta
-from orgmind.database_sqlite import get_db
+from orgmind.db import get_db
 
 
 def record_token_usage(

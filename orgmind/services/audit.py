@@ -2,7 +2,7 @@
 审计日志服务
 """
 import uuid, json
-from orgmind.database_sqlite import get_db
+from orgmind.db import get_db
 
 
 def log_audit(user_id: str, action: str, resource_type: str = None, resource_id: str = None, details: dict = None):

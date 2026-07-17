@@ -27,7 +27,7 @@ line through unchanged and advances by one.
 import difflib
 import uuid
 from typing import Optional, Tuple, List, Dict
-from orgmind.database_sqlite import get_db
+from orgmind.db import get_db
 
 
 def three_way_merge(

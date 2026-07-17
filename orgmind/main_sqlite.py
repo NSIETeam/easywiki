@@ -34,7 +34,7 @@ from fastapi.responses import PlainTextResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from orgmind.database_sqlite import get_db, OrgMindDB
+from orgmind.db import get_db, OrgMindDB
 from orgmind.agent_detector import detect_agents, generate_agent_config
 from orgmind.governance.cleaners import clean_text
 from orgmind.governance.dedup import compute_content_hash

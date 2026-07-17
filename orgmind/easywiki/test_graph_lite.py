@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 tmp_db = os.path.join(tempfile.mkdtemp(), "test_graph.db")
 os.environ["ORGMIND_DB_PATH"] = tmp_db
 
-from orgmind.database_sqlite import OrgMindDB
+from orgmind.db import OrgMindDB
 import orgmind.database_sqlite as db_module
 db_module.DB_PATH = tmp_db
 OrgMindDB._instance = None  # force re-init against the temp path

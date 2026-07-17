@@ -5,7 +5,7 @@ Rule-based, pure SQLite, no Kuzu/Redis dependency.
 import re
 import uuid
 from typing import List, Tuple
-from orgmind.database_sqlite import get_db
+from orgmind.db import get_db
 from orgmind.services.write_queue import execute_write
 
 

@@ -6,7 +6,7 @@ import uuid
 import json
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Header, Body, Query
-from orgmind.database_sqlite import get_db
+from orgmind.db import get_db
 from orgmind.governance.cleaners import clean_text
 from orgmind.governance.pii import detect_pii, upgrade_sensitivity
 from orgmind.governance.quality import compute_quality_score, QualityInput
