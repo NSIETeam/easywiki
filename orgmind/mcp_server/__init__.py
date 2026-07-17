@@ -1,0 +1,1 @@
+# EasyWiki MCP Server package

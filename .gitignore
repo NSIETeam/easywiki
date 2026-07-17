@@ -1,0 +1,86 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Electron
+electron/node_modules/
+electron/dist/
+electron/resources/backend/_internal/
+
+# Frontend
+frontend-src/node_modules/
+frontend-src/dist/
+frontend/dist/
+
+# Build output
+build/
+orgmind_backend.spec
+OrgMindBackend.spec
+OrgMindDebug.spec
+OrgMindDesktop.spec
+OrgMind-Demo.spec
+
+# Binaries
+*.exe
+
+# Archives
+*.tar.gz
+*.zip
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+
+# Temp
+gh_temp.exe
+
+# Debug / runtime logs (root level *.txt)
+debug_*.txt
+err*.txt
+out*.txt
+debug_out*.txt
+final_verify.txt
+local_test.txt
+quick_test_result.txt
+test_output.txt
+test_result.txt
+server_log*.txt
+deep_test_results.txt
+phase4_result.txt
+
+# Build/cleanup logs
+cleanup_log.json
+deploy_log.json
+deploy2_log.json
+deploy4_log.json
+deploy5_log.json
+deploy6_log.json
+deploy9_log.json
+
+# Other artifacts
+frontend-src/build_log*.txt
+server_attrs.json
+ssh_test.json
