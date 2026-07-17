@@ -27,18 +27,11 @@ frontend/dist/
 
 # Build output
 build/
-orgmind_backend.spec
-OrgMindBackend.spec
-OrgMindDebug.spec
-OrgMindDesktop.spec
-OrgMind-Demo.spec
-
-# Binaries
-*.exe
-
-# Archives
+*.spec
+*.iss
 *.tar.gz
 *.zip
+*.exe
 
 # IDE
 .vscode/
@@ -54,33 +47,18 @@ Thumbs.db
 .env
 .env.local
 
-# Temp
+# Temp / debug artifacts (generated at root)
 gh_temp.exe
-
-# Debug / runtime logs (root level *.txt)
 debug_*.txt
 err*.txt
 out*.txt
-debug_out*.txt
-final_verify.txt
-local_test.txt
-quick_test_result.txt
-test_output.txt
-test_result.txt
 server_log*.txt
-deep_test_results.txt
-phase4_result.txt
+*_log.json
+*_verify.txt
+*_result.txt
+test_output.txt
 
-# Build/cleanup logs
-cleanup_log.json
-deploy_log.json
-deploy2_log.json
-deploy4_log.json
-deploy5_log.json
-deploy6_log.json
-deploy9_log.json
-
-# Other artifacts
-frontend-src/build_log*.txt
-server_attrs.json
-ssh_test.json
+# Old OrgMind dead files (in case they reappear)
+OrgMind-Start.cmd
+OrgMind.cmd
+OrgMind.vbs
