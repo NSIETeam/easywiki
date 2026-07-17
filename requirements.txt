@@ -1,11 +1,26 @@
-# OrgMind Tier0 Solo - SQLite dependencies
+# EasyWiki — Python dependencies
+# ================================================================
+# For cloud deployment (main.py):
+#   pip install -r requirements.txt
+#
+# For local development without PostgreSQL (main_sqlite.py):
+#   pip install fastapi uvicorn numpy pyjwt python-multipart bcrypt jieba sentence-transformers
+# ================================================================
+
+# Core (always required)
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 numpy>=1.24.0
 pyjwt>=2.8.0
 python-multipart>=0.0.6
-openai>=1.0.0
-tenacity>=8.0.0
 bcrypt>=4.0.0
 jieba>=0.42.1
 sentence-transformers>=2.2.0
+
+# Cloud deployment (main.py) — PostgreSQL + async
+sqlalchemy[asyncio]>=2.0
+asyncpg>=0.29
+
+# LLM memory extraction (optional, for session auto-record)
+openai>=1.0.0
+tenacity>=8.0.0

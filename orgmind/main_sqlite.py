@@ -1,12 +1,11 @@
 """
-EasyWiki v1.0 — Self-Hosted Entry Point (SQLite)
+EasyWiki v1.0 — Development Entry Point (SQLite)
 ================================================================
-DEPLOYMENT MODE: self-hosted / private server
-DATABASE: SQLite (zero-dependency, single binary)
+DEPLOYMENT MODE: local development only (no PostgreSQL needed)
+DATABASE: SQLite (zero-dependency)
 USAGE: python -m uvicorn orgmind.main_sqlite:app --host 0.0.0.0 --port 8080
 
-For cloud/multi-tenant deployment with PostgreSQL + Redis, use:
-    python -m uvicorn orgmind.main:app --host 0.0.0.0 --port 8080
+For production cloud deployment, use: python -m uvicorn orgmind.main:app
 
 Features:
 - bcrypt password + random JWT key

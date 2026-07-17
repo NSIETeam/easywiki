@@ -1,33 +1,32 @@
 """
 Unified database abstraction layer.
 ========================================================================
-Self-hosted: SQLite (zero-dependency, default)
-Cloud:        PostgreSQL core + SQLite EasyWiki metadata
+Cloud (default):   PostgreSQL via orgmind.database (set DATABASE_URL)
+Development:       SQLite via orgmind.database_sqlite (zero-dep, for main_sqlite.py)
 
-Set EASYWIKI_DEPLOYMENT=cloud (or DEPLOYMENT_MODE) for cloud mode.
-Set EASYWIKI_DB_URL (or DATABASE_URL) for PostgreSQL connection.
+All EasyWiki routes use get_db() from this module.
 ========================================================================
 """
 import os
 
-_DEPLOYMENT_MODE = os.getenv("EASYWIKI_DEPLOYMENT", os.getenv("DEPLOYMENT_MODE", "self_hosted")).lower()
-_DB_URL = os.getenv("EASYWIKI_DB_URL", os.getenv("DATABASE_URL", ""))
+_DB_URL = os.getenv("DATABASE_URL", "")
 
-_is_cloud = _DEPLOYMENT_MODE in ("cloud", "production", "saas") or _DB_URL.startswith("postgres")
+# Default: cloud mode. Falls back to SQLite only if DATABASE_URL is empty.
+_is_cloud = bool(_DB_URL and _DB_URL.startswith("postgres"))
 
-# -- Always import SQLite for EasyWiki tables (works in both modes) -----
+# Always import SQLite for EasyWiki tables (works in both modes)
 from orgmind.database_sqlite import get_db, OrgMindDB
 
-# -- Optionally expose async PostgreSQL for cloud mode ------------------
+# PostgreSQL async session (cloud mode only)
 if _is_cloud:
     from orgmind.database import get_db as _get_async_db_ctx
     def get_async_db():
         return _get_async_db_ctx()
-    _MODE_LABEL = f"cloud (EasyWiki: SQLite + Core: PostgreSQL)"
+    _MODE_LABEL = f"cloud (PostgreSQL core + SQLite EasyWiki metadata)"
 else:
     def get_async_db():
-        raise RuntimeError("Async PostgreSQL not available in self-hosted mode. Set EASYWIKI_DEPLOYMENT=cloud.")
-    _MODE_LABEL = "self_hosted (SQLite)"
+        raise RuntimeError("Async PostgreSQL not available. Set DATABASE_URL or use main_sqlite.py for dev.")
+    _MODE_LABEL = "standalone (SQLite)"
 
 
 def is_cloud() -> bool:
