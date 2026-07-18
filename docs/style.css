@@ -1,0 +1,125 @@
+/* EasyWiki - Microsoft Fluent Inspired Design System */
+
+:root {
+  --color-paper:      #ffffff;
+  --color-paper-2:    #f8f9fa;
+  --color-ink:        #0f172a;
+  --color-ink-2:      #475569;
+  --color-rule:       #e2e8f0;
+
+  /* Custom Palette */
+  --color-accent-sky: #dbeafe; /* 浅天蓝 */
+  --color-accent-sky-dark: #3b82f6;
+  --color-accent-yellow: #fef9c3; /* 浅黄 */
+  --color-accent-yellow-dark: #ca8a04;
+
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "SF Mono", "Fira Code", "Consolas", monospace;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-base: 200ms;
+}
+
+@keyframes fadeIn-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  background: var(--color-paper);
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { text-decoration: none; color: inherit; }
+
+.container { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+
+/* ---- Navigation Bar ---- */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(255,255,255,.8);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--color-rule);
+}
+nav .container { display: flex; align-items: center; justify-content: space-between; height: 60px; }
+nav .brand { font-size: 18px; font-weight: 600; }
+nav .nav-links { display: flex; gap: 28px; align-items: center; }
+nav .nav-links a { font-size: 14px; color: var(--color-ink-2); font-weight: 500; transition: color var(--dur-base) var(--ease-out); }
+nav .nav-links a:hover { color: var(--color-ink); }
+nav .nav-cta { font-size: 13px; font-weight: 600; color: var(--color-ink); background: var(--color-accent-sky); padding: 8px 20px; transition: background var(--dur-base) var(--ease-out); }
+nav .nav-cta:hover { background: #bfdbfe; }
+
+/* ---- Hero Section ---- */
+.hero { padding: 100px 24px; text-align: center; }
+.hero h1 { font-size: 52px; font-weight: 800; letter-spacing: -1.5px; margin-bottom: 12px; animation: fadeIn-up 0.6s var(--ease-out); }
+.hero .tagline { font-size: 18px; color: var(--color-ink-2); max-width: 580px; margin: 0 auto 32px; animation: fadeIn-up 0.7s var(--ease-out); }
+.hero .cta-row { display: flex; gap: 16px; justify-content: center; animation: fadeIn-up 0.8s var(--ease-out); }
+.btn-primary { background: var(--color-ink); color: #fff; padding: 14px 36px; font-size: 14px; font-weight: 600; transition: transform var(--dur-base) var(--ease-out); }
+.btn-primary:hover { transform: translateY(-2px); }
+.btn-secondary { background: transparent; color: var(--color-ink); border: 1px solid var(--color-rule); padding: 14px 36px; font-size: 14px; font-weight: 600; transition: border-color var(--dur-base) var(--ease-out); }
+.btn-secondary:hover { border-color: var(--color-ink-2); }
+
+/* ---- Section ---- */
+.section { padding: 80px 0; border-bottom: 1px solid var(--color-rule); }
+.section h2 { font-size: 32px; font-weight: 700; text-align: center; margin-bottom: 12px; }
+.section .subtitle { text-align: center; color: var(--color-ink-2); font-size: 16px; margin-bottom: 48px; }
+
+/* ---- Feature Grid ---- */
+.feature-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--color-rule); border: 1px solid var(--color-rule); }
+.feature-card { padding: 28px; background: var(--color-paper); transition: background var(--dur-base) var(--ease-out); }
+.feature-card:hover { background: var(--color-paper-2); }
+.feature-card h3 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+.feature-card p { font-size: 14px; color: var(--color-ink-2); line-height: 1.7; }
+
+/* ---- Use Cases ---- */
+.usecase-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+.usecase-card { padding: 28px; background: var(--color-paper-2); transition: transform var(--dur-base) var(--ease-out); }
+.usecase-card:hover { transform: translateY(-4px); }
+.usecase-card h3 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+.usecase-card p { font-size: 13px; color: var(--color-ink-2); }
+
+/* ---- Code Block ---- */
+.code-block { background: #f8f9fa; border: 1px solid var(--color-rule); padding: 28px; max-width: 760px; margin: 0 auto; }
+.code-block pre { font-size: 13px; line-height: 1.8; font-family: var(--font-mono); white-space: pre-wrap; }
+.code-block .cmt { color: #8d99ae; }
+
+/* ---- FAQ ---- */
+.faq-list { max-width: 700px; margin: 0 auto; }
+.faq-item { border-bottom: 1px solid var(--color-rule); padding: 24px 0; }
+.faq-item:last-child { border-bottom: none; }
+.faq-item h3 { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+.faq-item p { font-size: 14px; color: var(--color-ink-2); }
+
+/* ---- CTA Section ---- */
+.cta-final { text-align: center; padding: 100px 24px; background: var(--color-accent-yellow); }
+.cta-final h2 { font-size: 32px; font-weight: 700; margin-bottom: 12px; }
+.cta-final p { font-size: 16px; color: var(--color-ink-2); margin-bottom: 32px; }
+
+/* ---- Footer ---- */
+footer { padding: 48px 24px; border-top: 1px solid var(--color-rule); }
+footer .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 24px; }
+footer .col h4 { font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+footer .col a { display: block; font-size: 13px; color: var(--color-ink-2); margin-bottom: 6px; }
+footer .copyright { font-size: 12px; color: var(--color-ink-2); width: 100%; text-align: center; margin-top: 32px; }
+
+/* Docs Pages */
+.doc-content h1, .doc-content h2, .doc-content h3 { font-family: var(--font-body); letter-spacing: -0.5px; }
+.doc-content h1 { font-size: 32px; font-weight: 700; margin: 48px 0 16px; }
+.doc-content h2 { font-size: 22px; font-weight: 600; margin: 40px 0 16px; padding-bottom: 8px; border-bottom: 1px solid var(--color-rule); }
+.doc-content h3 { font-size: 18px; font-weight: 600; margin: 28px 0 12px; }
+.doc-content p, .doc-content li { font-size: 15px; margin-bottom: 16px; }
+.doc-content table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 14px; border: 1px solid var(--color-rule); }
+.doc-content th { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--color-rule); font-weight: 600; background: var(--color-paper-2); }
+.doc-content td { padding: 12px 16px; border-bottom: 1px solid var(--color-rule); }
+
+@media(max-width: 768px) {
+  .feature-grid, .usecase-grid { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 36px; }
+  nav .nav-links a:not(.nav-cta) { display: none; }
+}
+</style>
