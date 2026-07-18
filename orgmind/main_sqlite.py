@@ -52,6 +52,10 @@ async def lifespan(app: FastAPI):
     org = db.execute("SELECT COUNT(*) as cnt FROM organizations").fetchone()
     if org['cnt'] == 0:
         _auto_setup(db)
+    # Start background sync daemon
+    import threading
+    sync_thread = threading.Thread(target=_sync_daemon, args=(db,), daemon=True)
+    sync_thread.start()
     yield
 
 app = FastAPI(title="EasyWiki", version="1.0.0", lifespan=lifespan)
@@ -568,13 +572,62 @@ def import_file(req: FileImportReq, authorization: str = Header(None)):
     log_audit(payload['user_id'], 'import_file', 'document', None, {"filename": req.filename, "chunks": len(chunks), "written": len([w for w in written if w['status']=='created'])})
     return {"filename": req.filename, "total_chunks": len(chunks), "chunks_written": len([w for w in written if w['status']=='created']), "details": written}
 
-# === 数据导出 ===
+# ══════════════════════════════════════════════════
+# Sync daemon —自动跨实例同步
+# ══════════════════════════════════════════════════
+
+def _sync_daemon(db):
+    """后台线程：每10分钟拉取一次远程实例数据"""
+    interval = int(os.getenv("ORGMIND_SYNC_INTERVAL", "600"))
+    print(f"[EasyWiki] Sync daemon started (interval={interval}s)")
+    while True:
+        time.sleep(interval)
+        try:
+            remotes = db.list_remote_instances()
+            for remote in remotes:
+                if not remote.get('sync_enabled', 1):
+                    continue
+                direction = remote.get('sync_direction', 'pull')
+                if direction in ('pull', 'both'):
+                    result = db.sync_from_remote(remote)
+                    if result.get('success'):
+                        print(f"[EasyWiki] Synced from {remote['name']}: {result['stats']}")
+        except Exception as e:
+            pass  # Silent fail in background
+
+# === 数据导入 ===
+@app.post("/api/v1/org/import")
+async def import_data(request: Request, authorization: str = Header(None)):
+    payload = decode_auth_header(authorization or "")
+    if payload['role'] != 'admin':
+        raise HTTPException(403, "Only admin can import data")
+    import json as _json
+    body = await request.body()
+    try:
+        data = _json.loads(body.decode('utf-8'))
+    except Exception:
+        raise HTTPException(400, "Invalid JSON body")
+
+    db = get_db()
+    user_mapping = data.get('user_mapping', {})
+    org_data = {k: v for k, v in data.items() if k != 'user_mapping'}
+    stats = db.import_org_data(org_data, payload['org_id'], user_mapping)
+    log_audit(payload['user_id'], 'import_data', 'organization', payload['org_id'], stats)
+    return stats
+
+# === 数据导出 (支持增量) ===
 @app.get("/api/v1/org/export")
-def export_data(authorization: str = Header(None)):
+def export_data(authorization: str = Header(None), since: str = None):
     payload = decode_auth_header(authorization or "")
     if payload['role'] != 'admin': raise HTTPException(403, "Only admin can export data")
     db = get_db()
-    data = db.export_all(payload['org_id'])
+    if since:
+        data = db.export_org_incremental(payload['org_id'], since)
+        data['change_log'] = db.get_change_log(payload['org_id'], since)
+    else:
+        data = db.export_all(payload['org_id'])
+        data['org_id'] = payload['org_id']
+        data['exported_at'] = __import__('datetime').datetime.now().isoformat()
     log_audit(payload['user_id'], 'export_data', 'organization', payload['org_id'])
     return JSONResponse(content=data, headers={"Content-Disposition": "attachment; filename=orgmind-export.json"})
 
