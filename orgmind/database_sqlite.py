@@ -38,7 +38,10 @@ class OrgMindDB:
             self._local.conn.row_factory = sqlite3.Row
             self._local.conn.execute("PRAGMA journal_mode=WAL")
             self._local.conn.execute("PRAGMA foreign_keys=ON")
-        return self._local.conn
+            self._local.conn.execute("PRAGMA busy_timeout=5000")
+            self._local.conn.execute("PRAGMA synchronous=NORMAL")
+            self._local.conn.execute("PRAGMA cache_size=-8000")
+            return self._local.conn
 
     def _init_schema(self):
         c = self._conn()
@@ -200,6 +203,40 @@ class OrgMindDB:
             manifest_json TEXT NOT NULL,
             enabled_tools TEXT DEFAULT '[]',
             updated_at TEXT DEFAULT (datetime('now'))
+        );
+        -- Phase 2: Clone mount (Trilium-style cross-project knowledge distribution)
+        CREATE TABLE IF NOT EXISTS easywiki_clone_mounts (
+            id TEXT PRIMARY KEY,
+            source_page_id TEXT NOT NULL,
+            source_project_id TEXT NOT NULL,
+            target_project_id TEXT NOT NULL,
+            target_section TEXT NOT NULL,
+            mount_parent_page_id TEXT,
+            sort_order INTEGER DEFAULT 0,
+            created_by TEXT NOT NULL,
+            created_at TEXT DEFAULT (datetime('now')),
+            UNIQUE(source_page_id, target_project_id)
+        );
+        -- Phase 3: Cross-instance sync
+        CREATE TABLE IF NOT EXISTS easywiki_remote_instances (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            url TEXT NOT NULL,
+            auth_token TEXT DEFAULT '',
+            sync_enabled INTEGER DEFAULT 1,
+            sync_direction TEXT DEFAULT 'pull',
+            last_sync_at TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS easywiki_change_log (
+            id TEXT PRIMARY KEY,
+            resource_type TEXT NOT NULL,
+            resource_id TEXT NOT NULL,
+            action TEXT NOT NULL,
+            org_id TEXT NOT NULL,
+            project_id TEXT,
+            content_snapshot TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
         );
         """)
         # FTS5 全文索引 (中文分词由 jieba 在应用层处理)
@@ -780,6 +817,295 @@ class OrgMindDB:
             urllib.request.urlopen(req, timeout=5)
         except Exception:
             pass
+
+    # ══════════════════════════════════════════════════
+    # Phase 2: Clone Mount —跨项目知识分发
+    # ══════════════════════════════════════════════════
+
+    def create_clone_mount(self, source_page_id: str, target_project_id: str,
+                           target_section: str, user_id: str,
+                           mount_parent_page_id: str = None) -> Dict:
+        """将页面克隆挂载到另一个项目 — Trilium-style"""
+        import uuid as _uuid
+        src = self.execute(
+            "SELECT id, project_id FROM easywiki_pages WHERE id=?",
+            (source_page_id,)
+        ).fetchone()
+        if not src:
+            raise ValueError("Source page not found")
+
+        mount_id = str(_uuid.uuid4())
+        self.execute(
+            "INSERT OR IGNORE INTO easywiki_clone_mounts "
+            "(id, source_page_id, source_project_id, target_project_id, "
+            "target_section, mount_parent_page_id, created_by) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (mount_id, source_page_id, src['project_id'], target_project_id,
+             target_section, mount_parent_page_id, user_id)
+        )
+        self.commit()
+        self._write_change_log('clone_mount', mount_id, 'create', '', target_project_id)
+        return {"id": mount_id, "source_page_id": source_page_id,
+                "target_project_id": target_project_id, "target_section": target_section}
+
+    def remove_clone_mount(self, mount_id: str) -> bool:
+        row = self.execute("SELECT id FROM easywiki_clone_mounts WHERE id=?", (mount_id,)).fetchone()
+        if not row:
+            return False
+        self.execute("DELETE FROM easywiki_clone_mounts WHERE id=?", (mount_id,))
+        self.commit()
+        self._write_change_log('clone_mount', mount_id, 'delete', '', '')
+        return True
+
+    def list_clone_mounts(self, project_id: str, as_source: bool = False) -> List[Dict]:
+        """列出项目的克隆挂载: as_source=True返回此项目作为来源的挂载, 否则返回接收的挂载"""
+        if as_source:
+            rows = self.execute(
+                "SELECT cm.*, p.title as page_title "
+                "FROM easywiki_clone_mounts cm "
+                "JOIN easywiki_pages p ON cm.source_page_id = p.id "
+                "WHERE cm.source_project_id=?",
+                (project_id,)
+            ).fetchall()
+        else:
+            rows = self.execute(
+                "SELECT cm.*, p.title as page_title, p.project_id as source_project_ref "
+                "FROM easywiki_clone_mounts cm "
+                "JOIN easywiki_pages p ON cm.source_page_id = p.id "
+                "WHERE cm.target_project_id=?",
+                (project_id,)
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def get_cloned_pages_for_project(self, project_id: str, section: str = None) -> List[Dict]:
+        """获取通过克隆挂载注入到项目的页面列表（用于页面列表查询）"""
+        sql = (
+            "SELECT p.*, cm.id as mount_id, cm.source_project_id "
+            "FROM easywiki_clone_mounts cm "
+            "JOIN easywiki_pages p ON cm.source_page_id = p.id "
+            "WHERE cm.target_project_id=?"
+        )
+        params = [project_id]
+        if section:
+            sql += " AND cm.target_section=?"
+            params.append(section)
+        rows = self.execute(sql, tuple(params)).fetchall()
+        return [dict(r) for r in rows]
+
+    # ══════════════════════════════════════════════════
+    # Phase 3: 跨实例同步 — remote_instances + change_log + import/export
+    # ══════════════════════════════════════════════════
+
+    def _write_change_log(self, resource_type: str, resource_id: str, action: str,
+                          org_id: str, project_id: str = "", content_snapshot: dict = None):
+        import uuid as _uuid, json as _json
+        log_id = str(_uuid.uuid4())
+        snap = _json.dumps(content_snapshot, ensure_ascii=False) if content_snapshot else None
+        self.execute(
+            "INSERT INTO easywiki_change_log (id, resource_type, resource_id, action, org_id, project_id, content_snapshot) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (log_id, resource_type, resource_id, action, org_id, project_id or "", snap)
+        )
+        self.commit()
+
+    def get_change_log(self, org_id: str, since: str = None, limit: int = 200) -> List[Dict]:
+        """获取变更日志，支持增量导出(since参数)"""
+        if since:
+            rows = self.execute(
+                "SELECT * FROM easywiki_change_log WHERE org_id=? AND created_at > ? "
+                "ORDER BY created_at ASC LIMIT ?",
+                (org_id, since, limit)
+            ).fetchall()
+        else:
+            rows = self.execute(
+                "SELECT * FROM easywiki_change_log WHERE org_id=? "
+                "ORDER BY created_at DESC LIMIT ?",
+                (org_id, limit)
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def add_remote_instance(self, name: str, url: str, auth_token: str = "",
+                            sync_direction: str = "pull") -> Dict:
+        import uuid as _uuid
+        rid = str(_uuid.uuid4())
+        self.execute(
+            "INSERT INTO easywiki_remote_instances (id, name, url, auth_token, sync_direction) "
+            "VALUES (?,?,?,?,?)",
+            (rid, name, url.rstrip('/'), auth_token, sync_direction)
+        )
+        self.commit()
+        return {"id": rid, "name": name, "url": url.rstrip('/'), "sync_direction": sync_direction}
+
+    def list_remote_instances(self) -> List[Dict]:
+        rows = self.execute(
+            "SELECT * FROM easywiki_remote_instances ORDER BY created_at DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def remove_remote_instance(self, rid: str) -> bool:
+        row = self.execute("SELECT id FROM easywiki_remote_instances WHERE id=?", (rid,)).fetchone()
+        if not row:
+            return False
+        self.execute("DELETE FROM easywiki_remote_instances WHERE id=?", (rid,))
+        self.commit()
+        return True
+
+    def update_remote_sync_time(self, rid: str):
+        self.execute(
+            "UPDATE easywiki_remote_instances SET last_sync_at=datetime('now') WHERE id=?",
+            (rid,)
+        )
+        self.commit()
+
+    def import_org_data(self, data: dict, target_org_id: str, user_mapping: dict = None) -> Dict:
+        """导入另一个实例导出的组织数据，处理ID重映射和冲突检测"""
+        import uuid as _uuid, json as _json
+        stats = {"imported": 0, "skipped": 0, "errors": 0}
+        user_map = user_mapping or {}
+
+        id_map = {}  # old_id → new_id
+
+        for table_name in ['memories', 'artifacts', 'documents']:
+            items = data.get(table_name, [])
+            for item in items:
+                old_id = item.get('id', '')
+                new_id = str(_uuid.uuid4())
+                id_map[old_id] = new_id
+
+                # Skip if content hash already exists
+                if item.get('content_hash'):
+                    existing = self.execute(
+                        "SELECT id FROM memories WHERE content_hash=? AND org_id=?",
+                        (item['content_hash'], target_org_id)
+                    ).fetchone()
+                    if existing:
+                        stats['skipped'] += 1
+                        continue
+
+                # Map creator to local user if possible
+                creator = item.get('created_by', '')
+                if creator and creator in user_map:
+                    creator = user_map[creator]
+
+                try:
+                    if table_name == 'memories':
+                        self.execute(
+                            "INSERT OR IGNORE INTO memories "
+                            "(id, org_id, department_id, type, scope, content, summary, "
+                            "content_hash, sensitivity, importance, status, created_by) "
+                            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                            (new_id, target_org_id, item.get('department_id', ''),
+                             item.get('type', 'general'), item.get('scope', 'department'),
+                             item.get('content', ''), item.get('summary', ''),
+                             item.get('content_hash', ''), item.get('sensitivity', 'normal'),
+                             item.get('importance', 0.5), 'active', creator)
+                        )
+                        stats['imported'] += 1
+                    elif table_name == 'artifacts':
+                        self.execute(
+                            "INSERT OR IGNORE INTO artifacts "
+                            "(id, org_id, object_type, name, description, content, "
+                            "version, status, scope, author_id) "
+                            "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                            (new_id, target_org_id, item.get('object_type', 'skill'),
+                             item.get('name', ''), item.get('description', ''),
+                             item.get('content', ''), item.get('version', '1'),
+                             'draft', item.get('scope', 'department'), creator)
+                        )
+                        stats['imported'] += 1
+                except Exception as e:
+                    stats['errors'] += 1
+
+        self.commit()
+        self._write_change_log('org_import', target_org_id, 'import',
+                               target_org_id, '', {'stats': stats})
+        return stats
+
+    def export_org_incremental(self, org_id: str, since: str = None) -> Dict:
+        """增量导出：since参数指定起始时间戳，返回该时间之后的新增/修改数据"""
+        data = {"org_id": org_id, "exported_at": __import__('datetime').datetime.now().isoformat()}
+        if since:
+            data['since'] = since
+            data['is_incremental'] = True
+        else:
+            data['is_incremental'] = False
+
+        for table in ['memories', 'artifacts']:
+            if since:
+                rows = self.execute(
+                    f"SELECT * FROM {table} WHERE org_id=? AND created_at > ?",
+                    (org_id, since)
+                ).fetchall()
+            else:
+                rows = self.execute(
+                    f"SELECT * FROM {table} WHERE org_id=?",
+                    (org_id,)
+                ).fetchall()
+            data[table] = [dict(r) for r in rows]
+
+        # Include change log entries for incremental
+        data['change_log'] = self.get_change_log(org_id, since)
+        return data
+
+    def sync_from_remote(self, remote_instance: dict) -> Dict:
+        """从远程实例拉取数据"""
+        import urllib.request, json as _json
+
+        url = remote_instance['url'].rstrip('/')
+        token = remote_instance.get('auth_token', '')
+        headers = {'Content-Type': 'application/json'}
+        if token:
+            headers['Authorization'] = f'Bearer {token}'
+
+        last_sync = remote_instance.get('last_sync_at', '')
+        export_url = f"{url}/api/v1/org/export"
+        if last_sync:
+            export_url += f"?since={last_sync}"
+
+        try:
+            req = urllib.request.Request(export_url, headers=headers)
+            resp = urllib.request.urlopen(req, timeout=30)
+            data = _json.loads(resp.read().decode())
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+        # We need the target org_id — use the first org
+        org_row = self.execute("SELECT id FROM organizations LIMIT 1").fetchone()
+        if not org_row:
+            return {"success": False, "error": "No local organization found"}
+        target_org_id = org_row['id']
+
+        stats = self.import_org_data(data, target_org_id)
+        self.update_remote_sync_time(remote_instance['id'])
+        self._write_change_log('sync_pull', remote_instance['id'], 'sync_pull',
+                               target_org_id, '', {'remote': remote_instance['name'], 'stats': stats})
+        return {"success": True, "stats": stats}
+
+    def push_to_remote(self, remote_instance: dict, org_id: str) -> Dict:
+        """向远程实例推送本地数据"""
+        import urllib.request, json as _json
+
+        url = remote_instance['url'].rstrip('/')
+        token = remote_instance.get('auth_token', '')
+        last_sync = remote_instance.get('last_sync_at', '')
+        export_data = self.export_org_incremental(org_id, last_sync)
+
+        try:
+            data_bytes = _json.dumps(export_data, ensure_ascii=False).encode('utf-8')
+            headers = {'Content-Type': 'application/json'}
+            if token:
+                headers['Authorization'] = f'Bearer {token}'
+            req = urllib.request.Request(f"{url}/api/v1/org/import", data=data_bytes,
+                                         headers=headers, method='POST')
+            resp = urllib.request.urlopen(req, timeout=30)
+            result = _json.loads(resp.read().decode())
+        except Exception as e:
+            return {"success": False, "error": str(e)}
+
+        self.update_remote_sync_time(remote_instance['id'])
+        self._write_change_log('sync_push', remote_instance['id'], 'sync_push',
+                               org_id, '', {'remote': remote_instance['name']})
+        return {"success": True, "result": result}
 
 
 def get_db() -> OrgMindDB:
