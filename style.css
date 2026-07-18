@@ -59,13 +59,13 @@ nav .nav-cta:hover, nav .links a.btn:hover { background: #bfdbfe; }
 .hero h1 { font-size: 52px; font-weight: 800; letter-spacing: -1.5px; margin-bottom: 12px; animation: fadeIn-up 0.6s var(--ease-out); }
 .hero .tagline { font-size: 18px; color: var(--color-ink-2); max-width: 580px; margin: 0 auto 8px; animation: fadeIn-up 0.7s var(--ease-out); }
 .hero .desc { font-size: 16px; color: var(--color-ink-2); max-width: 580px; margin: 0 auto 32px; }
-.hero .install { display: inline-flex; align-items: center; gap: 10px; background: var(--color-ink); color: #e2e8f0; padding: 12px 24px; font-family: var(--font-mono); font-size: 14px; margin-bottom: 8px; }
-.hero .install span { color: #8d99ae; }
-.hero .install code { color: #93c5fd; background: none; }
+.hero .install { display: inline-flex; align-items: center; gap: 10px; background: var(--color-paper-2); color: var(--color-ink-2); border: 1px solid var(--color-rule); padding: 12px 24px; font-family: var(--font-mono); font-size: 14px; margin-bottom: 8px; }
+.hero .install span { color: var(--color-ink-2); }
+.hero .install code { color: var(--color-accent-sky-dark); background: none; font-weight: 600; }
 .hero .cta-row { display: flex; gap: 16px; justify-content: center; margin-top: 24px; animation: fadeIn-up 0.8s var(--ease-out); }
 .hero .demo-badge { display: inline-block; background: var(--color-accent-yellow); color: var(--color-accent-yellow-dark); font-size: 12px; font-weight: 600; padding: 6px 16px; margin-top: 20px; }
-.btn-primary { background: var(--color-ink); color: #fff; padding: 14px 36px; font-size: 14px; font-weight: 600; transition: transform var(--dur-base) var(--ease-out); }
-.btn-primary:hover { transform: translateY(-2px); }
+.btn-primary { background: var(--color-accent-sky-dark); color: #fff; padding: 14px 36px; font-size: 14px; font-weight: 600; transition: transform var(--dur-base) var(--ease-out); }
+.btn-primary:hover { transform: translateY(-2px); background: #2563eb; }
 .btn-secondary { background: transparent; color: var(--color-ink); border: 1px solid var(--color-rule); padding: 14px 36px; font-size: 14px; font-weight: 600; transition: border-color var(--dur-base) var(--ease-out); }
 .btn-secondary:hover { border-color: var(--color-ink-2); }
 
@@ -132,12 +132,12 @@ footer .copyright { font-size: 12px; color: var(--color-ink-2); width: 100%; tex
 .doc-content table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 14px; border: 1px solid var(--color-rule); }
 .doc-content th { text-align: left; padding: 12px 16px; border-bottom: 1px solid var(--color-rule); font-weight: 600; background: var(--color-paper-2); }
 .doc-content td { padding: 12px 16px; border-bottom: 1px solid var(--color-rule); }
-.doc-content code { font-family: var(--font-mono); font-size: 13px; background: var(--color-paper-2); padding: 2px 6px; }
-.doc-content pre { background: var(--color-ink); color: #e2e8f0; padding: 20px; overflow-x: auto; margin: 12px 0 20px; font-size: 13px; line-height: 1.8; font-family: var(--font-mono); }
+.doc-content code { font-family: var(--font-mono); font-size: 13px; background: var(--color-paper-2); padding: 2px 6px; color: var(--color-accent-sky-dark); }
+.doc-content pre { background: var(--color-paper-2); color: var(--color-ink); border: 1px solid var(--color-rule); border-left: 3px solid var(--color-accent-sky-dark); padding: 16px 20px; overflow-x: auto; margin: 12px 0 20px; font-size: 13px; line-height: 1.8; font-family: var(--font-mono); }
 .doc-content pre code { background: none; padding: 0; color: inherit; }
-.doc-content .kw { color: #93c5fd; }
-.doc-content .str { color: #86efac; }
-.doc-content .cmt { color: #64748b; }
+.doc-content .kw { color: var(--color-accent-sky-dark); font-weight: 600; }
+.doc-content .str { color: #15803d; }
+.doc-content .cmt { color: var(--color-ink-2); }
 .doc-content .diagram { background: var(--color-paper-2); border: 1px solid var(--color-rule); padding: 20px; margin: 16px 0 24px; font-family: var(--font-mono); font-size: 13px; line-height: 1.8; white-space: pre; color: var(--color-ink-2); overflow-x: auto; }
 .doc-content .back-link { display: inline-block; margin: 24px 0; font-size: 14px; color: var(--color-accent-sky-dark); font-weight: 600; }
 
