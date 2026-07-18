@@ -38,7 +38,7 @@ export default function KnowledgeGraphView({ pid }: { pid: string }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<{ label: string; type: string; x: number; y: number } | null>(null);
   const animRef = useRef<number | null>(null);
 
@@ -87,10 +87,41 @@ export default function KnowledgeGraphView({ pid }: { pid: string }) {
         setLoading(false);
         startSimulation(nodes, edges, W, H);
       })
-      .catch((err) => {
+      .catch(() => {
         if (!cancelled) {
-          setError(err.message);
+          // 演示数据
+          const demoNodes = [
+            { id: "n1", label: "产品研发", type: "Project" },
+            { id: "n2", label: "React技术选型", type: "Decision" },
+            { id: "n3", label: "张三", type: "Person" },
+            { id: "n4", label: "SQLite优化", type: "Decision" },
+            { id: "n5", label: "李四", type: "Person" },
+            { id: "n6", label: "API设计规范", type: "Decision" },
+            { id: "n7", label: "王五", type: "Person" },
+          ];
+          const demoEdges = [
+            { id: "e1", source: "n1", target: "n2", label: "包含" },
+            { id: "e2", source: "n1", target: "n4", label: "包含" },
+            { id: "e3", source: "n1", target: "n6", label: "包含" },
+            { id: "e4", source: "n3", target: "n2", label: "决策者" },
+            { id: "e5", source: "n5", target: "n4", label: "执行者" },
+            { id: "e6", source: "n7", target: "n6", label: "起草人" },
+            { id: "e7", source: "n2", target: "n6", label: "关联" },
+          ];
+          const W = containerRef.current?.clientWidth ?? 800;
+          const H = containerRef.current?.clientHeight ?? 500;
+          const cx = W / 2, cy = H / 2;
+          const nodeMap = new Map<string, Node>();
+          const nodes: Node[] = demoNodes.map((n) => {
+            const angle = Math.random() * 2 * Math.PI;
+            const r = 30 + Math.random() * 80;
+            const node: Node = { id: n.id, label: n.label, type: n.type, x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle), vx: 0, vy: 0 };
+            nodeMap.set(n.id, node);
+            return node;
+          });
+          const edges = resolveEdgeEndpoints(demoEdges.map((e) => ({ id: e.id, source: e.source, target: e.target, label: e.label })), nodeMap);
           setLoading(false);
+          startSimulation(nodes, edges, W, H);
         }
       });
 

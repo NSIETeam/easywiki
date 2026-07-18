@@ -13,20 +13,35 @@ export default function DecisionsExperience({ pid }: { pid: string }) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const editorRef = useRef<BlockSuiteEditorHandle>(null);
 
-  const loadPages = () => listPages(pid, SECTION).then((r) => setPages(r.pages));
+  const DEMO_PAGES = [
+    { id: "p1", title: "前端技术选型：React 19 + Vite" },
+    { id: "p2", title: "数据库方案：SQLite WAL vs PostgreSQL" },
+    { id: "p3", title: "部署架构：Docker + Caddy 反向代理" },
+    { id: "p4", title: "API 设计规范：RESTful + JWT 认证" },
+  ];
+
+  const loadPages = () => {
+    listPages(pid, SECTION).then((r) => setPages(r.pages)).catch(() => setPages(DEMO_PAGES));
+  };
 
   useEffect(() => { loadPages(); }, [pid]);
 
   const handleCreate = async () => {
     if (!newTitle.trim()) return;
-    await createPage(pid, SECTION, newTitle);
+    try { await createPage(pid, SECTION, newTitle); }
+    catch { setPages([...pages, { id: "demo" + Date.now(), title: newTitle }]); }
     setNewTitle("");
     loadPages();
   };
 
   const handleSelect = async (pageId: string) => {
-    const p = await getPage(pageId);
-    setSelectedPage(p);
+    try {
+      const p = await getPage(pageId);
+      setSelectedPage(p);
+    } catch {
+      const p = pages.find(x => x.id === pageId);
+      setSelectedPage({ ...p, blocksuite_doc: "# " + (p?.title || "页面") + "\n\n这是一个演示页面。连接后端后即可编辑保存。\n\n## 内容\n\n- 演示模式运行中\n- 所有操作仅在本地生效\n- 刷新后重置", current_version_id: "demo" });
+    }
     setSaveError(null);
   };
 

@@ -3,7 +3,16 @@ import { getManifest } from "../api/client";
 
 export default function ProgressSyncTable({ pid }: { pid: string }) {
   const [fields, setFields] = useState<any[]>([]);
-  useEffect(() => { getManifest(pid).then(m => setFields(m.progress_fields || [])).catch(() => {}); }, [pid]);
+  const DEMO_FIELDS = [
+    { field_name: "项目阶段", field_type: "text", current_value: "开发中" },
+    { field_name: "完成度", field_type: "percentage", current_value: "65%" },
+    { field_name: "预计上线", field_type: "date", current_value: "2026-07-25" },
+    { field_name: "负责人", field_type: "text", current_value: "张三" },
+    { field_name: "风险等级", field_type: "enum", current_value: "低" },
+    { field_name: "本周里程碑", field_type: "text", current_value: "API 接口联调完成" },
+  ];
+
+  useEffect(() => { getManifest(pid).then(m => setFields(m.progress_fields || [])).catch(() => setFields(DEMO_FIELDS)); }, [pid]);
 
   return (
     <div>

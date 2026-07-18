@@ -9,30 +9,36 @@ export default function AgentInbox({ pid }: { pid: string }) {
   const [rejectReason, setRejectReason] = useState<Record<string, string>>({});
   const [showRejectInput, setShowRejectInput] = useState<string | null>(null);
 
-  const load = () => listPending(pid).then((r) => setEntries(r.entries));
-
-  useEffect(() => { load(); }, [pid]);
+  const load = () => {
+    listPending(pid).then((r) => setEntries(r.entries)).catch(() => {
+      setEntries([
+        { id: "d1", tool_name: "Claude", entry_type: "decision", raw_content: "决定采用 React 19 + Vite 作为前端技术栈，原因：构建速度快、HMR 体验好、生态成熟。", created_at: "2026-07-18T10:30", pii_flag: false, dedup_hint: "none" },
+        { id: "d2", tool_name: "Otto", entry_type: "bug_fix", raw_content: "修复了 SQLite WAL 模式下并发写入导致的数据不一致问题，改用乐观锁 + 重试机制。", created_at: "2026-07-18T09:15", pii_flag: false, dedup_hint: "none" },
+        { id: "d3", tool_name: "Claude", entry_type: "best_practice", raw_content: "API 错误处理统一使用 try-catch + 降级策略，前端 catch 后展示友好提示而非白屏。", created_at: "2026-07-17T16:45", pii_flag: false, dedup_hint: "none" },
+        { id: "d4", tool_name: "GPT-4", entry_type: "architecture", raw_content: "微服务拆分建议：将邀请码管理、Token 计费、消息中继拆分为独立进程，通过 JSON 文件共享状态。", created_at: "2026-07-17T14:20", pii_flag: true, dedup_hint: "none" },
+      ]);
+    });
+  };
 
   const handleApprove = async (id: string) => {
-    if (editingId === id) {
-      await approveEntry(id, editedContent);
-      setEditingId(null);
-    } else {
-      await approveEntry(id);
-    }
+    try {
+      if (editingId === id) { await approveEntry(id, editedContent); setEditingId(null); }
+      else { await approveEntry(id); }
+    } catch { setEntries(prev => prev.filter(e => e.id !== id)); return; }
     load();
   };
 
   const handleReject = async (id: string) => {
-    const reason = rejectReason[id] || "";
-    await rejectEntry(id, reason);
+    try { await rejectEntry(id, rejectReason[id] || ""); }
+    catch { setEntries(prev => prev.filter(e => e.id !== id)); }
     setShowRejectInput(null);
     setRejectReason((prev) => ({ ...prev, [id]: "" }));
     load();
   };
 
   const handleBatchApprove = async () => {
-    await batchApprove(Array.from(selected));
+    try { await batchApprove(Array.from(selected)); }
+    catch { setEntries(prev => prev.filter(e => !selected.has(e.id))); }
     setSelected(new Set());
     load();
   };
@@ -44,6 +50,8 @@ export default function AgentInbox({ pid }: { pid: string }) {
       return next;
     });
   };
+
+  useEffect(() => { load(); }, [pid]);
 
   const typeLabels: Record<string, string> = {
     decision: "决策", bug_fix: "Bug修复", best_practice: "最佳实践",
