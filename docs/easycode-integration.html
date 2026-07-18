@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EasyCode 协作指南 — EasyWiki</title>
+<style>
+:root{--paper:#f9fafb;--paper-2:#f3f4f6;--ink:#1e293b;--ink-2:#475569;--rule:#e2e8f0;--accent:#4f46e5;--code-bg:#1e293b}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--paper);line-height:1.7}
+.container{max-width:820px;margin:0 auto;padding:0 24px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+nav{position:sticky;top:0;z-index:100;background:rgba(249,250,251,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+nav .container{display:flex;align-items:center;justify-content:space-between;height:56px}
+nav .brand{font-family:Georgia,serif;font-size:19px;font-weight:700;color:var(--ink)}
+nav .links{display:flex;gap:24px}nav .links a{font-size:14px;color:var(--ink-2)}
+h1{font-family:Georgia,serif;font-size:32px;font-weight:700;margin:48px 0 8px}
+h2{font-family:Georgia,serif;font-size:22px;font-weight:700;margin:40px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--rule)}
+h3{font-size:17px;font-weight:700;margin:28px 0 8px}
+p{font-size:15px;margin-bottom:12px}ul,ol{margin-bottom:16px;padding-left:24px}li{font-size:15px;margin-bottom:6px}
+code{font-family:"SF Mono","Fira Code","Consolas",monospace;font-size:13px;background:var(--paper-2);padding:2px 6px;border-radius:3px}
+pre{background:var(--code-bg);color:#e2e8f0;padding:20px;border-radius:4px;overflow-x:auto;margin:12px 0 20px;font-size:13px;line-height:1.8}
+pre code{background:none;padding:0;color:inherit}
+table{width:100%;border-collapse:collapse;margin:12px 0 20px;font-size:14px}
+th{text-align:left;padding:10px 14px;border-bottom:2px solid var(--rule);font-weight:700;font-size:13px}
+td{padding:10px 14px;border-bottom:1px solid var(--rule)}
+.kw{color:#93c5fd}.str{color:#86efac}.cmt{color:#64748b}
+.back-link{display:inline-block;margin:24px 0;font-size:14px;color:var(--accent)}
+.diagram{background:var(--paper-2);border:1px solid var(--rule);border-radius:4px;padding:20px;margin:16px 0 24px;font-family:"SF Mono","Fira Code",monospace;font-size:13px;line-height:1.8;white-space:pre;color:var(--ink-2)}
+footer{padding:32px 24px;border-top:1px solid var(--rule);text-align:center;font-size:12px;color:var(--ink-2);margin-top:48px}
+</style>
+</head>
+<body>
+<nav><div class="container">
+<a href="https://nsieteam.github.io/easywiki/" class="brand">EasyWiki</a>
+<div class="links">
+<a href="https://nsieteam.github.io/easywiki/">介绍</a>
+<a href="deployment.html">部署</a>
+<a href="maintenance.html">维护</a>
+<a href="easycode-integration.html">协作</a>
+<a href="https://github.com/NSIETeam/easywiki" target="_blank">GitHub</a>
+</div>
+</div></nav>
+
+<div class="container">
+<h1>EasyCode 与 EasyWiki 协作指南</h1>
+<p>EasyCode 是 AI 编程助手，EasyWiki 是组织知识管理平台。两者协作形成"编码、知识沉淀、辅助编码"闭环。</p>
+
+<div class="diagram">EasyCode 编码/决策 ──→ EasyWiki 自动记录 ──→ 知识检索/复用 ──→ EasyCode 辅助编码</div>
+
+<h2>1. 集成架构</h2>
+<div class="diagram">┌─────────────┐         ┌─────────────┐
+│   EasyCode   │         │  EasyWiki   │
+│  (CLI/IDE)   │◄───────►│  (Server)   │
+│              │  HTTP   │             │
+│  Agent 工作  │  API    │  知识存储    │
+│  代码生成    │         │  全文搜索    │
+│  代码审查    │         │  知识图谱    │
+└─────────────┘         └─────────────┘
+      │                        │
+      │  决策/Bug/最佳实践      │
+      └───────写入────────────►│
+                              │
+      │  知识检索/上下文        │
+      ◄───────查询────────────┤</div>
+
+<h2>2. 配置方式</h2>
+<h3>2.1 EasyCode 端</h3>
+<p>在 <code>.easycode/settings.json</code> 中添加：</p>
+<pre><code>{
+  "easywiki": {
+    "enabled": true,
+    "base_url": "http://your-wiki-server:8080",
+    "token": "your-jwt-token",
+    "auto_record": true,
+    "project_id": "wiki-project-id"
+  }
+}</code></pre>
+
+<h3>2.2 EasyWiki 端</h3>
+<ol>
+<li>创建对应项目</li>
+<li>创建专用 API 账号（角色: agent）</li>
+<li>生成 JWT Token 供 EasyCode 使用</li>
+<li>配置 Webhook 接收 EasyCode 事件</li>
+</ol>
+
+<h2>3. 协作场景</h2>
+<h3>3.1 自动决策记录</h3>
+<p>EasyCode Agent 在编码过程中做出的技术决策，自动写入 EasyWiki 待审核队列：</p>
+<pre><code>EasyCode: <span class="str">"决定使用 Redis 做缓存，因为..."</span>
+  ↓ auto_record: true
+EasyWiki: 收到待审核条目
+  ↓ 管理员审核通过
+EasyWiki: 正式入库，加入知识图谱</code></pre>
+
+<h3>3.2 知识辅助编码</h3>
+<p>EasyCode 在编码时查询 EasyWiki 获取团队历史经验，注入上下文：</p>
+<pre><code><span class="kw">def</span> before_code_generation(context):
+    results = easywiki.search(context.task_description, top_k=5)
+    <span class="kw">if</span> results:
+        context.add_system_prompt(<span class="str">f"团队历史经验参考:\n{format_results(results)}"</span>)</code></pre>
+
+<h3>3.3 代码审查知识化</h3>
+<p>EasyCode 审查代码时，自动关联 EasyWiki 中的规范文档，给出基于团队规范的修改建议。</p>
+
+<h3>3.4 项目文档同步</h3>
+<table>
+<tr><th>EasyCode 事件</th><th>EasyWiki 动作</th></tr>
+<tr><td>新建模块</td><td>创建文档页面</td></tr>
+<tr><td>删除文件</td><td>标记文档为归档</td></tr>
+<tr><td>依赖变更</td><td>更新技术栈记录</td></tr>
+<tr><td>CI/CD 配置变更</td><td>更新部署流程文档</td></tr>
+</table>
+
+<h2>4. API 接口</h2>
+<h3>4.1 写入知识条目</h3>
+<pre><code><span class="kw">curl</span> -X POST http://wiki-server:8080/api/v1/easywiki/projects/{pid}/pending-entries \
+  -H <span class="str">"Authorization: Bearer $TOKEN"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"tool_name":"EasyCode","entry_type":"decision","raw_content":"决定使用 WebSocket 替代轮询"}'</span></code></pre>
+
+<h3>4.2 搜索知识</h3>
+<pre><code><span class="kw">curl</span> -X POST http://wiki-server:8080/api/v1/search \
+  -H <span class="str">"Authorization: Bearer $TOKEN"</span> \
+  -d <span class="str">'{"query":"缓存方案 Redis","top_k":5,"mode":"hybrid"}'</span></code></pre>
+
+<h3>4.3 获取知识图谱</h3>
+<pre><code><span class="kw">curl</span> http://wiki-server:8080/api/v1/easywiki/projects/{pid}/graph \
+  -H <span class="str">"Authorization: Bearer $TOKEN"</span></code></pre>
+
+<h2>5. Hooks 集成</h2>
+<p>在 <code>.easycode/hooks.json</code> 中配置：</p>
+<pre><code>{
+  "hooks": [
+    {
+      "event": "task_complete",
+      "action": "easywiki_record",
+      "config": { "entry_type": "auto", "project_id": "wiki-project-id" }
+    },
+    {
+      "event": "before_code_gen",
+      "action": "easywiki_search",
+      "config": { "top_k": 5, "inject_context": true }
+    }
+  ]
+}</code></pre>
+
+<h2>6. 数据流</h2>
+<div class="diagram">EasyCode 工作会话
+    ├── 技术决策 ──────► EasyWiki pending-entries (decision)
+    ├── Bug 修复 ──────► EasyWiki pending-entries (bug_fix)
+    ├── 最佳实践 ──────► EasyWiki pending-entries (best_practice)
+    ├── 架构变更 ──────► EasyWiki pending-entries (architecture)
+    ├── 编码前 ────────► EasyWiki search (获取历史经验)
+    ├── 审查时 ────────► EasyWiki search (关联规范文档)
+    └── 项目变更 ──────► EasyWiki documents (同步更新)</div>
+
+<h2>7. 权限模型</h2>
+<table>
+<tr><th>角色</th><th>EasyCode 权限</th><th>EasyWiki 权限</th></tr>
+<tr><td>admin</td><td>全部</td><td>全部 + 管理</td></tr>
+<tr><td>agent</td><td>写入 pending-entries, 搜索</td><td>写入, 搜索</td></tr>
+<tr><td>member</td><td>搜索, 读取</td><td>读取, 搜索</td></tr>
+<tr><td>viewer</td><td>无</td><td>只读</td></tr>
+</table>
+
+<h2>8. 最佳实践</h2>
+<ul>
+<li>一个 EasyCode 项目对应一个 EasyWiki 项目</li>
+<li>EasyCode 自动记录的条目必须经人工审核</li>
+<li>搜索 top_k 不超过 10</li>
+<li>批量写入每批不超过 50 条</li>
+<li>JWT Token 定期轮换（建议 7 天）</li>
+<li>Agent 账号使用最小权限</li>
+<li>审计日志保留至少 90 天</li>
+</ul>
+
+<a href="https://nsieteam.github.io/easywiki/" class="back-link">返回首页</a>
+</div>
+
+<footer>© 2026 EasyWiki · NSIETeam</footer>
+</body>
+</html>
