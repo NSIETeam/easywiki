@@ -125,8 +125,26 @@ def list_section_pages(project_id: str, section: str, authorization: str = Heade
         "FROM easywiki_pages p WHERE p.project_id=? AND p.section=? ORDER BY p.sort_order, p.created_at",
         (project_id, section)
     ).fetchall()
-    return {"pages": [{"id": r["id"], "title": r["title"], "parent_page_id": r["parent_page_id"],
-                        "order": r["sort_order"], "is_clone_of": r["clone_of"]} for r in rows]}
+
+    # Phase 2: include cloned pages from clone_mounts
+    cloned_pages = db.get_cloned_pages_for_project(project_id, section)
+
+    pages = []
+    seen_ids = set()
+    for r in rows:
+        if r["id"] not in seen_ids:
+            pages.append({"id": r["id"], "title": r["title"], "parent_page_id": r["parent_page_id"],
+                          "order": r["sort_order"], "is_clone_of": r["clone_of"], "is_cloned": False})
+            seen_ids.add(r["id"])
+    for cp in cloned_pages:
+        if cp["id"] not in seen_ids:
+            pages.append({"id": cp["id"], "title": cp["title"], "parent_page_id": cp.get("parent_page_id"),
+                          "order": cp.get("sort_order", 0), "is_clone_of": None,
+                          "is_cloned": True, "mount_id": cp["mount_id"],
+                          "source_project_id": cp["source_project_id"]})
+            seen_ids.add(cp["id"])
+
+    return {"pages": pages}
 
 
 @router.post("/projects/{project_id}/sections/{section}/pages")
@@ -599,3 +617,165 @@ def get_project_graph(project_id: str, authorization: str = Header(None)):
         "nodes": [{"id": r["id"], "label": r["name"], "type": r["entity_type"]} for r in entities],
         "edges": [{"id": r["id"], "source": r["from_entity_id"], "target": r["to_entity_id"], "label": r["relation"]} for r in relations]
     }
+
+
+# ══════════════════════════════════════════════════
+# Phase 2: Clone Mount —跨项目知识分发 API
+# ══════════════════════════════════════════════════
+
+@router.post("/projects/{pid}/clone-mounts")
+def create_clone_mount(
+    pid: str,
+    source_page_id: str = Body(...),
+    target_section: str = Body(...),
+    mount_parent_page_id: Optional[str] = Body(None),
+    authorization: str = Header(None)
+):
+    """将页面从其他项目克隆挂载到当前项目"""
+    user = decode_auth_header(authorization)
+    if not user:
+        raise HTTPException(401, "Invalid auth")
+
+    def _create(db):
+        _project_access(db, pid, user.get('org_id', ''))
+        return db.create_clone_mount(
+            source_page_id, pid, target_section, user['id'], mount_parent_page_id
+        )
+
+    try:
+        result = execute_write(_create)
+        return result
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@router.get("/projects/{pid}/clone-mounts")
+def list_clone_mounts(pid: str, as_source: bool = False, authorization: str = Header(None)):
+    """列出项目的克隆挂载"""
+    user = decode_auth_header(authorization)
+    if not user:
+        raise HTTPException(401, "Invalid auth")
+
+    def _list(db):
+        _project_access(db, pid, user.get('org_id', ''))
+        return db.list_clone_mounts(pid, as_source)
+
+    return execute_write(_list)
+
+
+@router.delete("/clone-mounts/{mid}")
+def remove_clone_mount(mid: str, authorization: str = Header(None)):
+    """移除克隆挂载"""
+    user = decode_auth_header(authorization)
+    if not user:
+        raise HTTPException(401, "Invalid auth")
+
+    def _delete(db):
+        if not db.remove_clone_mount(mid):
+            raise HTTPException(404, "Mount not found")
+        return {"ok": True}
+
+    return execute_write(_delete)
+
+
+# ══════════════════════════════════════════════════
+# Phase 3: 跨实例同步 API
+# ══════════════════════════════════════════════════
+
+@router.get("/remotes")
+def list_remotes(authorization: str = Header(None)):
+    """列出所有远程实例"""
+    user = decode_auth_header(authorization)
+    if not user:
+        raise HTTPException(401, "Invalid auth")
+
+    def _list(db):
+        return db.list_remote_instances()
+
+    return execute_write(_list)
+
+
+@router.post("/remotes")
+def add_remote(
+    name: str = Body(...),
+    url: str = Body(...),
+    auth_token: str = Body(""),
+    sync_direction: str = Body("pull"),
+    authorization: str = Header(None)
+):
+    """添加远程实例"""
+    user = decode_auth_header(authorization)
+    if not user:
+        raise HTTPException(401, "Invalid auth")
+
+    def _add(db):
+        return db.add_remote_instance(name, url, auth_token, sync_direction)
+
+    return execute_write(_add)
+
+
+@router.delete("/remotes/{rid}")
+def remove_remote(rid: str, authorization: str = Header(None)):
+    """删除远程实例"""
+    user = decode_auth_header(authorization)
+    if not user:
+        raise HTTPException(401, "Invalid auth")
+
+    def _remove(db):
+        if not db.remove_remote_instance(rid):
+            raise HTTPException(404, "Remote instance not found")
+        return {"ok": True}
+
+    return execute_write(_remove)
+
+
+@router.get("/change-log")
+def get_change_log(since: str = None, limit: int = 200, authorization: str = Header(None)):
+    """获取变更日志"""
+    user = decode_auth_header(authorization)
+    if not user:
+        raise HTTPException(401, "Invalid auth")
+
+    def _get(db):
+        return db.get_change_log(user.get('org_id', ''), since, limit)
+
+    return execute_write(_get)
+
+
+@router.post("/sync/pull")
+def sync_pull(authorization: str = Header(None)):
+    """从所有启用的远程实例拉取数据"""
+    user = decode_auth_header(authorization)
+    if not user:
+        raise HTTPException(401, "Invalid auth")
+
+    def _pull(db):
+        remotes = db.list_remote_instances()
+        results = []
+        for remote in remotes:
+            if remote.get('sync_enabled', 1) and remote.get('sync_direction') in ('pull', 'both'):
+                result = db.sync_from_remote(remote)
+                results.append({"remote": remote['name'], **result})
+        return {"results": results}
+
+    return execute_write(_pull)
+
+
+@router.post("/sync/push")
+def sync_push(authorization: str = Header(None)):
+    """向所有启用的远程实例推送本地数据"""
+    user = decode_auth_header(authorization)
+    if not user:
+        raise HTTPException(401, "Invalid auth")
+
+    def _push(db):
+        remotes = db.list_remote_instances()
+        org_id = user.get('org_id', '')
+        results = []
+        for remote in remotes:
+            if remote.get('sync_enabled', 1) and remote.get('sync_direction') in ('push', 'both'):
+                result = db.push_to_remote(remote, org_id)
+                results.append({"remote": remote['name'], **result})
+        return {"results": results}
+
+    return execute_write(_push)
