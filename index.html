@@ -1,14 +1,310 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/easywiki/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend-src</title>
-    <script type="module" crossorigin src="/easywiki/assets/index-BuURhGqs.js"></script>
-    <link rel="stylesheet" crossorigin href="/easywiki/assets/index-GbySu1Ws.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EasyWiki — 组织知识管理平台</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--blue:#2563eb;--blue-dark:#1e40af;--blue-light:#eff6ff;--gray:#f8fafc;--gray-text:#64748b;--border:#e2e8f0;--dark:#0f172a}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:var(--dark);background:#fff;line-height:1.6}
+a{text-decoration:none;color:inherit}
+.container{max-width:1080px;margin:0 auto;padding:0 24px}
+
+/* Nav */
+nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+nav .container{display:flex;align-items:center;justify-content:space-between;height:60px}
+nav .logo{font-size:20px;font-weight:800;color:var(--blue)}
+nav .links{display:flex;gap:28px;align-items:center}
+nav .links a{font-size:14px;color:var(--gray-text);transition:color .2s}
+nav .links a:hover{color:var(--dark)}
+nav .btn{background:var(--blue);color:#fff;padding:8px 20px;border-radius:8px;font-size:13px;font-weight:600}
+
+/* Hero */
+.hero{text-align:center;padding:100px 24px 80px;background:linear-gradient(180deg,var(--blue-light) 0%,#fff 100%)}
+.hero h1{font-size:56px;font-weight:900;letter-spacing:-1px;margin-bottom:16px;background:linear-gradient(135deg,var(--blue),#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero .tagline{font-size:20px;color:var(--gray-text);margin-bottom:8px}
+.hero .desc{font-size:16px;color:var(--gray-text);max-width:600px;margin:0 auto 32px}
+.hero .install{display:inline-flex;align-items:center;gap:12px;background:var(--dark);color:#e2e8f0;padding:14px 24px;border-radius:10px;font-family:"SF Mono","Fira Code",monospace;font-size:14px}
+.hero .install code{color:#93c5fd}
+.hero .cta-row{display:flex;gap:16px;justify-content:center;margin-top:32px}
+.hero .btn-primary{background:var(--blue);color:#fff;padding:14px 32px;border-radius:10px;font-size:15px;font-weight:700;transition:transform .15s}
+.hero .btn-primary:hover{transform:translateY(-2px)}
+.hero .btn-secondary{background:#fff;color:var(--dark);border:1px solid var(--border);padding:14px 32px;border-radius:10px;font-size:15px;font-weight:600}
+
+/* Badge */
+.badge-row{display:flex;gap:24px;justify-content:center;padding:40px 24px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.badge{text-align:center}
+.badge .num{font-size:32px;font-weight:900;color:var(--blue)}
+.badge .label{font-size:13px;color:var(--gray-text)}
+
+/* Section */
+.section{padding:80px 0;border-bottom:1px solid var(--border)}
+.section h2{font-size:36px;font-weight:800;text-align:center;margin-bottom:16px}
+.section .subtitle{text-align:center;color:var(--gray-text);font-size:16px;margin-bottom:48px}
+
+/* Feature grid */
+.feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.feature-card{padding:28px;border:1px solid var(--border);border-radius:12px;transition:box-shadow .2s}
+.feature-card:hover{box-shadow:0 4px 24px rgba(0,0,0,.06)}
+.feature-card .icon{font-size:32px;margin-bottom:12px}
+.feature-card h3{font-size:17px;font-weight:700;margin-bottom:8px}
+.feature-card p{font-size:14px;color:var(--gray-text);line-height:1.6}
+
+/* Use cases */
+.usecase-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}
+.usecase-card{display:flex;gap:16px;padding:24px;border-radius:12px;background:var(--gray)}
+.usecase-card .icon{font-size:28px;flex-shrink:0}
+.usecase-card h3{font-size:16px;font-weight:700;margin-bottom:4px}
+.usecase-card p{font-size:13px;color:var(--gray-text)}
+
+/* Code block */
+.code-showcase{background:var(--dark);border-radius:16px;padding:32px;margin:0 auto;max-width:800px}
+.code-showcase .tab{display:inline-block;color:#64748b;font-size:13px;padding:6px 12px;border-radius:6px;margin-bottom:16px;background:rgba(255,255,255,.05)}
+.code-showcase pre{color:#e2e8f0;font-size:13px;line-height:1.8;font-family:"SF Mono","Fira Code",monospace;white-space:pre-wrap}
+.code-showcase .kw{color:#93c5fd}.code-showcase .str{color:#86efac}.code-showcase .cmt{color:#64748b}
+
+/* FAQ */
+.faq-list{max-width:720px;margin:0 auto}
+.faq-item{border-bottom:1px solid var(--border);padding:20px 0}
+.faq-item h3{font-size:16px;font-weight:600;margin-bottom:8px;cursor:pointer}
+.faq-item p{font-size:14px;color:var(--gray-text)}
+
+/* CTA */
+.cta-section{text-align:center;padding:100px 24px;background:var(--dark);color:#fff}
+.cta-section h2{font-size:36px;font-weight:800;margin-bottom:16px}
+.cta-section p{font-size:16px;color:#94a3b8;margin-bottom:32px}
+.cta-section .btn-primary{display:inline-block;background:var(--blue);color:#fff;padding:16px 40px;border-radius:10px;font-size:16px;font-weight:700}
+
+/* Footer */
+footer{padding:48px 24px;border-top:1px solid var(--border);background:var(--gray)}
+footer .container{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:24px}
+footer .col h4{font-size:13px;font-weight:700;color:var(--dark);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px}
+footer .col a{display:block;font-size:13px;color:var(--gray-text);margin-bottom:6px}
+footer .col a:hover{color:var(--blue)}
+footer .copyright{font-size:12px;color:var(--gray-text);margin-top:24px;width:100%;text-align:center}
+
+/* Demo badge */
+.demo-badge{display:inline-block;background:#fef3c7;color:#92400e;font-size:12px;padding:4px 12px;border-radius:20px;font-weight:600;margin-top:16px}
+
+@media(max-width:768px){
+  .feature-grid,.usecase-grid{grid-template-columns:1fr}
+  .hero h1{font-size:36px}
+  nav .links a:not(.btn){display:none}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <a href="#" class="logo">EasyWiki</a>
+    <div class="links">
+      <a href="#features">功能</a>
+      <a href="#usecases">场景</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/NSIETeam/easywiki" target="_blank">GitHub</a>
+      <a href="https://nsieteam.github.io/easywiki/" class="btn">立即体验</a>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <h1>EasyWiki</h1>
+  <div class="tagline">组织知识管理平台</div>
+  <p class="desc">AI 驱动的团队知识库 — 自动记录决策、检测冲突、构建知识图谱，让团队的每一次经验沉淀都不流失。</p>
+  <div class="install">
+    <span>$</span><code>docker run -p 8080:8080 easywiki/easywiki</code>
+  </div>
+  <div class="cta-row">
+    <a href="https://nsieteam.github.io/easywiki/" class="btn-primary">在线体验 Demo</a>
+    <a href="https://github.com/NSIETeam/easywiki" class="btn-secondary">查看源码</a>
+  </div>
+  <div class="demo-badge">演示模式 · 无需注册即可浏览</div>
+</section>
+
+<!-- Stats -->
+<div class="badge-row">
+  <div class="badge"><div class="num">8+</div><div class="label">核心模块</div></div>
+  <div class="badge"><div class="num">FTS5</div><div class="label">全文搜索</div></div>
+  <div class="badge"><div class="num">7天</div><div class="label">自动备份</div></div>
+  <div class="badge"><div class="num">0</div><div class="label">外部依赖</div></div>
+</div>
+
+<!-- Features -->
+<section class="section" id="features">
+  <div class="container">
+    <h2>核心功能</h2>
+    <p class="subtitle">从知识录入到智能检索，全链路覆盖团队协作场景</p>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="icon">📝</div>
+        <h3>决策与经验记录</h3>
+        <p>支持页面树结构，Agent 自动提取会话中的决策、Bug修复、最佳实践，经人工审核后入库。</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🔍</div>
+        <h3>全文搜索 (FTS5)</h3>
+        <p>基于 SQLite FTS5 的中文全文检索，秒级定位文档内容，支持关键词高亮和语义相似度排序。</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🕸️</div>
+        <h3>知识图谱</h3>
+        <p>自动抽取文档中的实体关系，构建可视化力导向图，直观展示项目、决策、人员之间的关联。</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🤖</div>
+        <h3>Agent 活动中心</h3>
+        <p>AI Agent 自动记录工作过程，待审核条目统一管理，支持批量批准、驳回、编辑后入库。</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🔒</div>
+        <h3>并发控制与版本历史</h3>
+        <p>乐观锁防止多人编辑覆盖，每次修改自动生成版本快照，支持一键回滚到任意历史版本。</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🛡️</div>
+        <h3>安全与合规</h3>
+        <p>HTML 输入消毒防 XSS，PII 敏感信息检测，操作审计日志，API 限流 60 次/分钟。</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">💾</div>
+        <h3>自动备份</h3>
+        <p>每日自动 SQLite 数据库备份，保留最近 7 天，WAL checkpoint 确保数据一致性。</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">📊</div>
+        <h3>进度同步表</h3>
+        <p>可自定义字段的项目进度看板，实时同步关键字段，支持文本、日期、枚举、百分比类型。</p>
+      </div>
+      <div class="feature-card">
+        <div class="icon">🔔</div>
+        <h3>Webhook 通知</h3>
+        <p>文档变更、Agent 录入、冲突检测等事件支持 Webhook 推送，可对接飞书、钉钉等 IM。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Code Showcase -->
+<section class="section">
+  <div class="container">
+    <h2>快速开始</h2>
+    <p class="subtitle">三种方式，30 秒内启动</p>
+    <div class="code-showcase">
+      <div class="tab">Docker</div>
+<pre><span class="cmt"># 一键启动（推荐）</span>
+<span class="kw">docker</span> run -d \
+  -p 8080:8080 \
+  -v easywiki-data:/data \
+  -e ORGMIND_ADMIN_PASSWORD=admin123 \
+  easywiki/easywiki
+
+<span class="cmt"># 访问 http://localhost:8080</span>
+<span class="cmt"># 登录 admin@local / admin123</span></pre>
+    </div>
+    <div class="code-showcase" style="margin-top:16px">
+      <div class="tab">Python</div>
+<pre><span class="cmt"># 从源码运行</span>
+<span class="kw">git</span> clone https://github.com/NSIETeam/easywiki.git
+<span class="kw">cd</span> easywiki
+<span class="kw">pip</span> install -r requirements.txt
+<span class="kw">python</span> -m uvicorn orgmind.main_sqlite:app --host 0.0.0.0 --port 8080</pre>
+    </div>
+  </div>
+</section>
+
+<!-- Use Cases -->
+<section class="section" id="usecases">
+  <div class="container">
+    <h2>应用场景</h2>
+    <p class="subtitle">适用于各类需要知识沉淀的团队</p>
+    <div class="usecase-grid">
+      <div class="usecase-card">
+        <div class="icon">🚀</div>
+        <div><h3>研发团队</h3><p>自动记录技术决策、架构选型、Bug 修复方案，新人入职即可查阅完整决策链路。</p></div>
+      </div>
+      <div class="usecase-card">
+        <div class="icon">📋</div>
+        <div><h3>项目管理</h3><p>项目进度看板实时同步，会议纪要自动提取行动项，里程碑和风险一目了然。</p></div>
+      </div>
+      <div class="usecase-card">
+        <div class="icon">🔬</div>
+        <div><h3>研究团队</h3><p>文献笔记、实验记录、数据分析结果统一管理，全文搜索快速定位历史结论。</p></div>
+      </div>
+      <div class="usecase-card">
+        <div class="icon">🏢</div>
+        <div><h3>企业知识库</h3><p>部门级权限管控，流程文档模板化，审计日志满足合规要求，Webhook 对接现有 IM。</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section" id="faq">
+  <div class="container">
+    <h2>常见问题</h2>
+    <div class="faq-list">
+      <div class="faq-item">
+        <h3>EasyWiki 需要什么数据库？</h3>
+        <p>零外部依赖。使用 SQLite 作为存储引擎，内置向量相似度计算和 FTS5 全文搜索，无需 PostgreSQL 或 Redis。</p>
+      </div>
+      <div class="faq-item">
+        <h3>数据存储在哪里？</h3>
+        <p>所有数据存储在本地 SQLite 文件中（默认 ~/.easywiki/easywiki.db）。Docker 部署时挂载 /data 卷即可持久化。每日自动备份保留 7 天。</p>
+      </div>
+      <div class="faq-item">
+        <h3>支持多少人同时使用？</h3>
+        <p>SQLite WAL 模式 + 乐观锁支持中小团队（50人以内）协作。每个文档保留 20 个版本快照，支持冲突检测和回滚。</p>
+      </div>
+      <div class="faq-item">
+        <h3>AI Agent 如何工作？</h3>
+        <p>Agent 在开发过程中自动提取决策、最佳实践、Bug 修复等知识条目，写入待审核队列。人工审核通过后正式入库，确保质量。</p>
+      </div>
+      <div class="faq-item">
+        <h3>支持哪些部署方式？</h3>
+        <p>Docker 一键部署、Python 源码运行、Docker Compose 编排。支持非 root 用户运行，内置健康检查端点。</p>
+      </div>
+      <div class="faq-item">
+        <h3>是否开源？</h3>
+        <p>完全开源，代码托管在 GitHub：github.com/NSIETeam/easywiki。欢迎 Issue 和 PR。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta-section">
+  <h2>让团队经验不再流失</h2>
+  <p>30 秒启动，立即开始沉淀你的团队知识</p>
+  <a href="https://nsieteam.github.io/easywiki/" class="btn-primary">立即体验 Demo</a>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="container">
+    <div class="col">
+      <h4>产品</h4>
+      <a href="#features">核心功能</a>
+      <a href="#usecases">应用场景</a>
+      <a href="https://nsieteam.github.io/easywiki/">在线 Demo</a>
+    </div>
+    <div class="col">
+      <h4>开发</h4>
+      <a href="https://github.com/NSIETeam/easywiki" target="_blank">GitHub 源码</a>
+      <a href="https://github.com/NSIETeam/easywiki/issues" target="_blank">问题反馈</a>
+      <a href="https://github.com/NSIETeam/easywiki/wiki" target="_blank">文档 Wiki</a>
+    </div>
+    <div class="col">
+      <h4>关于</h4>
+      <a href="#">关于我们</a>
+      <a href="#">隐私政策</a>
+      <a href="#">服务条款</a>
+    </div>
+    <div class="copyright">© 2026 EasyWiki · NSIETeam. All rights reserved.</div>
+  </div>
+</footer>
+
+</body>
 </html>
