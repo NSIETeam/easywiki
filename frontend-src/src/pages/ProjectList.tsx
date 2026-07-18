@@ -51,7 +51,7 @@ export default function ProjectList() {
         {projects.map((p) => (
           <a
             key={p.id}
-            href={`/project/${p.id}`}
+            href={`#/project/${p.id}`}
             className="block bg-white border rounded-lg p-4 no-underline hover:shadow-md"
           >
             <div className="font-medium text-[14px] text-ew-blue">{p.name}</div>
