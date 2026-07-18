@@ -211,6 +211,26 @@ class OrgMindDB:
             """)
         except Exception:
             pass  # FTS5 may not be available in all SQLite builds
+
+        # Phase2 additions: version history + document FTS + sort order
+        for alter_sql in [
+            "CREATE TABLE IF NOT EXISTS version_history (id TEXT PRIMARY KEY, resource_type TEXT NOT NULL, resource_id TEXT NOT NULL, content TEXT NOT NULL, summary TEXT, created_by TEXT, created_at TEXT DEFAULT (datetime('now')))",
+            "ALTER TABLE documents ADD COLUMN version INTEGER DEFAULT 1",
+            "ALTER TABLE documents ADD COLUMN sort_order INTEGER DEFAULT 0",
+            "ALTER TABLE artifacts ADD COLUMN version INTEGER DEFAULT 1",
+        ]:
+            try:
+                self._conn().execute(alter_sql)
+            except Exception:
+                pass  # Column may already exist
+        try:
+            c.executescript("""
+                CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
+                    doc_id, title, content, tokenize='unicode61'
+                );
+            """)
+        except Exception:
+            pass
         self._conn().commit()
 
     def execute(self, sql: str, params: tuple = ()) -> sqlite3.Cursor:
@@ -544,6 +564,222 @@ class OrgMindDB:
         return [{"id": r['id'], "code": r['code'], "department_id": r['department_id'],
                  "dept_name": r['dept_name'], "role": r['role'], "max_uses": r['max_uses'],
                  "used_count": r['used_count'], "created_at": r['created_at']} for r in rows]
+
+    # ══════════════════════════════════════════════════
+    # Phase 1: 备份 + 审计 + 版本历史
+    # ══════════════════════════════════════════════════
+
+    def backup_database(self) -> str:
+        """WAL checkpoint + 副本写入 backups/ 目录, 保留最近 7 天, 每天最多 1 份"""
+        import shutil, time
+        backup_dir = os.path.join(os.path.dirname(DB_PATH), "backups")
+        os.makedirs(backup_dir, exist_ok=True)
+        self._conn().execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        today = time.strftime("%Y-%m-%d")
+        backup_path = os.path.join(backup_dir, f"easywiki-{today}.db")
+        shutil.copy2(DB_PATH, backup_path)
+        # 清理 7 天前的备份
+        cutoff = time.time() - 7 * 86400
+        for f in os.listdir(backup_dir):
+            fp = os.path.join(backup_dir, f)
+            if f.startswith("easywiki-") and os.path.getmtime(fp) < cutoff:
+                os.remove(fp)
+        return backup_path
+
+    def write_audit_log(self, user_id: str, action: str, resource_type: str = "", resource_id: str = "", details: dict = None):
+        """写入审计日志"""
+        import uuid, json
+        log_id = str(uuid.uuid4())
+        self.execute(
+            "INSERT INTO audit_logs (id, user_id, action, resource_type, resource_id, details) VALUES (?,?,?,?,?,?)",
+            (log_id, user_id or "", action, resource_type, resource_id or "", json.dumps(details or {}, ensure_ascii=False))
+        )
+        self.commit()
+
+    def get_audit_logs(self, org_id: str = "", limit: int = 100) -> List[Dict]:
+        rows = self.execute(
+            "SELECT a.*, u.name as user_name FROM audit_logs a LEFT JOIN users u ON a.user_id = u.id "
+            "ORDER BY a.created_at DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def create_version_snapshot(self, resource_type: str, resource_id: str, content: str, user_id: str, summary: str = ""):
+        """保存文档/artifact历史版本"""
+        import uuid
+        vid = str(uuid.uuid4())
+        self.execute(
+            "INSERT INTO version_history (id, resource_type, resource_id, content, created_by, summary) VALUES (?,?,?,?,?,?)",
+            (vid, resource_type, resource_id, content, user_id, summary)
+        )
+        self.commit()
+        # 每个资源最多保留 20 个版本
+        self.execute("""
+            DELETE FROM version_history WHERE id IN (
+                SELECT id FROM version_history WHERE resource_type=? AND resource_id=?
+                ORDER BY created_at DESC LIMIT -1 OFFSET 20
+            )
+        """, (resource_type, resource_id))
+        self.commit()
+
+    def list_versions(self, resource_type: str, resource_id: str) -> List[Dict]:
+        rows = self.execute(
+            "SELECT v.*, u.name as user_name FROM version_history v LEFT JOIN users u ON v.created_by = u.id "
+            "WHERE v.resource_type=? AND v.resource_id=? ORDER BY v.created_at DESC LIMIT 20",
+            (resource_type, resource_id)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def restore_version(self, version_id: str) -> Optional[Dict]:
+        row = self.execute("SELECT * FROM version_history WHERE id=?", (version_id,)).fetchone()
+        return dict(row) if row else None
+
+    # ══════════════════════════════════════════════════
+    # Phase 2: 全文搜索 (FTS5)
+    # ══════════════════════════════════════════════════
+
+    def add_document_fts(self, doc_id: str, title: str, content: str):
+        """将文档内容加入 FTS5 索引"""
+        # 中文分词由 jieba 预处理, 这里先存原始内容
+        try:
+            self.execute("INSERT INTO documents_fts (doc_id, title, content) VALUES (?,?,?)",
+                         (doc_id, title, content))
+            self.commit()
+        except Exception:
+            pass
+
+    def search_documents(self, org_id: str, query: str, limit: int = 20) -> List[Dict]:
+        """FTS5 全文搜索文档"""
+        try:
+            rows = self.execute("""
+                SELECT f.rank, d.id, d.title, d.doc_type, d.scope, d.created_by,
+                       snippet(documents_fts, 1, '<b>', '</b>', '...', 60) as snippet,
+                       u.name as author_name
+                FROM documents_fts f
+                JOIN documents d ON f.doc_id = d.id
+                LEFT JOIN users u ON d.created_by = u.id
+                WHERE d.org_id = ? AND documents_fts MATCH ?
+                ORDER BY rank LIMIT ?
+            """, (org_id, query, limit)).fetchall()
+            return [dict(r) for r in rows]
+        except Exception:
+            # FTS5 不可用时回退到 LIKE 搜索
+            like_q = f"%{query}%"
+            rows = self.execute(
+                "SELECT d.*, u.name as author_name FROM documents d LEFT JOIN users u ON d.created_by=u.id "
+                "WHERE d.org_id=? AND (d.title LIKE ? OR d.storage_key LIKE ?) ORDER BY d.created_at DESC LIMIT ?",
+                (org_id, like_q, like_q, limit)
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    # ══════════════════════════════════════════════════
+    # Phase 3: 输入安全 sanitize
+    # ══════════════════════════════════════════════════
+
+    @staticmethod
+    def sanitize_html(raw_html: str) -> str:
+        """移除危险 HTML 标签和属性, 保留安全内容"""
+        import re
+        if not raw_html:
+            return ""
+        # 移除 <script>, <iframe>, <object>, <embed>, <link>, <style>
+        raw_html = re.sub(r'</?(script|iframe|object|embed|link|style|meta|form|input|button)\b[^>]*>', '', raw_html, flags=re.IGNORECASE)
+        # 移除 on* 事件属性
+        raw_html = re.sub(r'\s+on\w+\s*=\s*"[^"]*"', '', raw_html)
+        raw_html = re.sub(r"\s+on\w+\s*=\s*'[^']*'", '', raw_html)
+        # 移除 javascript: 伪协议
+        raw_html = re.sub(r'href\s*=\s*["\']\s*javascript:', 'href="', raw_html, flags=re.IGNORECASE)
+        return raw_html
+
+    # ══════════════════════════════════════════════════
+    # Phase 4: 并发乐观锁
+    # ══════════════════════════════════════════════════
+
+    def update_with_lock(self, table: str, resource_id: str, updates: Dict[str, any], expected_version: int, id_field: str = "id") -> Tuple[bool, int]:
+        """乐观锁更新：只有版本号匹配时才更新, 返回 (成功, 新版本号)"""
+        current = self.execute(f"SELECT version FROM {table} WHERE {id_field}=?", (resource_id,)).fetchone()
+        if not current:
+            return False, 0
+        if current['version'] != expected_version:
+            return False, current['version']  # 冲突, 返回当前版本
+
+        new_version = expected_version + 1
+        set_clause = ", ".join([f"{k}=?" for k in updates.keys()])
+        values = list(updates.values()) + [new_version, resource_id]
+        self.execute(f"UPDATE {table} SET {set_clause}, version=?, updated_at=datetime('now') WHERE {id_field}=? AND version=?", values + [expected_version])
+        self.commit()
+        return True, new_version
+
+    # ══════════════════════════════════════════════════
+    # Phase 5: 限流 (Token Bucket)
+    # ══════════════════════════════════════════════════
+    _rate_limits: Dict[str, Tuple[float, int]] = {}  # key → (last_refill_ts, tokens)
+
+    def check_rate_limit(self, key: str, max_tokens: int = 60, refill_rate: int = 60) -> bool:
+        """Token bucket限流: 默认60次/分钟"""
+        import time as _time
+        now = _time.time()
+        if key not in self._rate_limits:
+            self._rate_limits[key] = (now, max_tokens - 1)
+            return True
+        last_refill, tokens = self._rate_limits[key]
+        refill = (now - last_refill) * (refill_rate / 60)
+        tokens = min(max_tokens, tokens + refill)
+        if tokens < 1:
+            return False
+        self._rate_limits[key] = (now, tokens - 1)
+        return True
+
+    # ══════════════════════════════════════════════════
+    # Phase 6: 文档模板
+    # ══════════════════════════════════════════════════
+    def seed_templates(self, org_id: str, admin_id: str):
+        """为新组织注入预置文档模板"""
+        import uuid
+        templates = [
+            {"type": "knowledge", "title": "团队知识库", "content": "# 团队知识库\n\n## 新人入职\n- 账号开通清单\n- 开发环境配置\n- 常用工具和链接\n\n## 技术文档\n- 架构设计\n- API 文档\n- 部署流程\n\n## 会议记录\n- 周会纪要模板"},
+            {"type": "project", "title": "项目管理制度", "content": "# 项目管理制度\n\n## 项目启动\n- 需求评审流程\n- 技术方案模板\n- 排期与里程碑\n\n## 日常管理\n- 每日站会\n- 周报模板\n- 风险跟踪"},
+            {"type": "hr", "title": "人事行政", "content": "# 人事行政\n\n## 考勤与休假\n- 请假流程\n- 加班政策\n\n## 报销流程\n- 差旅报销\n- 采购报销\n\n## 培训发展\n- 内部培训计划\n- 外部学习资源"},
+        ]
+        for t in templates:
+            doc_id = str(uuid.uuid4())
+            self.execute(
+                "INSERT INTO documents (id, org_id, title, doc_type, storage_key, content_hash, scope, status, created_by) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
+                (doc_id, org_id, t['title'], t['type'], t['content'], org_id, 'department', 'active', admin_id)
+            )
+            self.add_document_fts(doc_id, t['title'], t['content'])
+            self.write_audit_log(admin_id, 'seed_template', 'document', doc_id, {'title': t['title']})
+        self.commit()
+
+    # ══════════════════════════════════════════════════
+    # Phase 7: 拖拽排序
+    # ══════════════════════════════════════════════════
+    def reorder_documents(self, org_id: str, doc_orders: List[Tuple[str, int]]):
+        """批量更新文档排序位置"""
+        for doc_id, order in doc_orders:
+            self.execute("UPDATE documents SET sort_order=? WHERE id=? AND org_id=?", (order, doc_id, org_id))
+        self.commit()
+
+    # ══════════════════════════════════════════════════
+    # Phase 8: 通知 Webhook
+    # ══════════════════════════════════════════════════
+    _webhook_urls: Dict[str, str] = {}
+
+    def set_webhook(self, org_id: str, url: str):
+        self._webhook_urls[org_id] = url
+
+    def send_notification(self, org_id: str, event: str, payload: dict):
+        """向组织的 webhook URL 发送事件通知"""
+        import json, urllib.request
+        url = self._webhook_urls.get(org_id)
+        if not url:
+            return
+        try:
+            data = json.dumps({"event": event, "payload": payload, "org_id": org_id, "timestamp": __import__('datetime').datetime.now().isoformat()}).encode()
+            req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'}, method='POST')
+            urllib.request.urlopen(req, timeout=5)
+        except Exception:
+            pass
 
 
 def get_db() -> OrgMindDB:
