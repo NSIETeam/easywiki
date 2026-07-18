@@ -8,6 +8,9 @@ import OrgKnowledgeBase from "./pages/OrgKnowledgeBase";
 import AgentActivityCenter from "./pages/AgentActivityCenter";
 import Settings from "./pages/Settings";
 
+// Detect GitHub Pages subpath
+const BASENAME = import.meta.env.BASE_URL || "/";
+
 export default function App() {
   const [loggedIn, setLoggedIn] = useState(!!getToken());
 
@@ -16,7 +19,7 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={BASENAME}>
       <div className="flex h-screen bg-ew-gray text-[13px] text-gray-800">
         {/* Sidebar */}
         <nav className="w-56 bg-white border-r border-ew-gray-border flex flex-col p-3 gap-1 shrink-0">
@@ -48,10 +51,11 @@ export default function App() {
 }
 
 function NavItem({ href, label }: { href: string; label: string }) {
-  const isActive = window.location.pathname === href;
+  const fullPath = BASENAME === "/" ? href : `${BASENAME}${href}`.replace(/\/+/g, "/");
+  const isActive = window.location.pathname === fullPath || window.location.pathname === href;
   return (
     <a
-      href={href}
+      href={fullPath}
       className={`px-2 py-1.5 rounded text-[13px] no-underline ${
         isActive ? "bg-ew-blue-light text-ew-blue font-medium" : "text-ew-gray-text hover:bg-gray-100"
       }`}
