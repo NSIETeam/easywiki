@@ -258,36 +258,45 @@ class OrgMindDB:
     # === 向量相似搜索 (SQLite内联 numpy) — 带权限过滤 ===
     def vector_search(self, query_embedding: List[float], org_id: str, visible_depts: Set[str],
                       shared_mem_ids: Set[str], user_id: str, top_k: int = 20) -> List[Dict]:
-        """用 numpy 计算余弦相似度, 在内存中排序取 top_k, 已过滤权限"""
-        rows = self.execute(
-            "SELECT id, content, type, embedding, created_at, access_count, scope, department_id, created_by FROM memories WHERE org_id=? AND embedding IS NOT NULL AND status='active'",
-            (org_id,)
-        ).fetchall()
-
+        """用 numpy 计算余弦相似度, 分批处理+内存优化, 已过滤权限"""
         results = []
-        q_emb = np.array(query_embedding)
+        q_emb = np.array(query_embedding, dtype=np.float32)
         q_norm = np.linalg.norm(q_emb) or 1.0
 
-        for row in rows:
-            # 权限过滤
-            scope = row['scope']
-            if scope == 'personal' and row['created_by'] != user_id:
-                continue
-            if scope == 'department' and row['department_id'] not in visible_depts:
-                # 检查是否被共享
-                if row['id'] not in shared_mem_ids:
-                    continue
-            if scope == 'project':
-                pass  # project scope 通过 project_ids 在调用层处理
+        # H2 fix: batch processing to reduce memory usage
+        BATCH_SIZE = 500
+        offset = 0
+        while True:
+            batch = self.execute(
+                "SELECT id, content, type, embedding, created_at, access_count, scope, department_id, created_by FROM memories WHERE org_id=? AND embedding IS NOT NULL AND status='active' LIMIT ? OFFSET ?",
+                (org_id, BATCH_SIZE, offset)
+            ).fetchall()
+            if not batch:
+                break
+            offset += BATCH_SIZE
 
-            emb = json.loads(row['embedding'])
-            vec = np.array(emb)
-            sim = float(np.dot(q_emb, vec) / (q_norm * (np.linalg.norm(vec) or 1.0)))
-            results.append({
-                'id': row['id'], 'content_snippet': row['content'][:300],
-                'source_type': 'memory', 'vector_score': sim,
-                'type': row['type'], 'created_at': row['created_at'],
-                'access_count': row['access_count'] or 0,
+            for row in batch:
+                scope = row['scope']
+                if scope == 'personal' and row['created_by'] != user_id:
+                    continue
+                if scope == 'department' and row['department_id'] not in visible_depts:
+                    if row['id'] not in shared_mem_ids:
+                        continue
+                if scope == 'project':
+                    pass
+
+                try:
+                    emb = json.loads(row['embedding'])
+                    vec = np.array(emb, dtype=np.float32)
+                except (json.JSONDecodeError, ValueError):
+                    continue
+                vec_norm = np.linalg.norm(vec) or 1.0
+                sim = float(np.dot(q_emb, vec) / (q_norm * vec_norm))
+                results.append({
+                    'id': row['id'], 'content_snippet': row['content'][:300],
+                    'source_type': 'memory', 'vector_score': sim,
+                    'type': row['type'], 'created_at': row['created_at'],
+                    'access_count': row['access_count'] or 0,
                 'scope': scope, 'department_id': row['department_id'],
             })
 
