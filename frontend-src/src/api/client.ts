@@ -72,3 +72,37 @@ export const listVersions = (targetType: string, targetId: string) =>
 // Knowledge Graph
 export const getProjectGraph = (pid: string) =>
   request<{ nodes: any[]; edges: any[] }>("GET", `/api/v1/easywiki/projects/${pid}/graph`);
+
+// Clone Mounts (Phase 2 — cross-project knowledge distribution)
+export const listCloneMounts = (pid: string, asSource = false) =>
+  request<any[]>("GET", `/api/v1/easywiki/projects/${pid}/clone-mounts${asSource ? "?as_source=true" : ""}`);
+export const createCloneMount = (pid: string, sourcePageId: string, targetSection: string, mountParentPageId?: string) =>
+  request<any>("POST", `/api/v1/easywiki/projects/${pid}/clone-mounts`, {
+    source_page_id: sourcePageId,
+    target_section: targetSection,
+    mount_parent_page_id: mountParentPageId || null,
+  });
+export const removeCloneMount = (mid: string) =>
+  request<any>("DELETE", `/api/v1/easywiki/clone-mounts/${mid}`);
+
+// Cross-instance sync (Phase 3)
+export const listRemotes = () =>
+  request<any[]>("GET", "/api/v1/easywiki/remotes");
+export const addRemote = (name: string, url: string, authToken: string, syncDirection: string) =>
+  request<any>("POST", "/api/v1/easywiki/remotes", { name, url, auth_token: authToken, sync_direction: syncDirection });
+export const removeRemote = (rid: string) =>
+  request<any>("DELETE", `/api/v1/easywiki/remotes/${rid}`);
+export const syncPull = () =>
+  request<any>("POST", "/api/v1/easywiki/sync/pull");
+export const syncPush = () =>
+  request<any>("POST", "/api/v1/easywiki/sync/push");
+export const getChangeLog = (since?: string, limit = 200) =>
+  request<any[]>("GET", `/api/v1/easywiki/change-log${since ? `?since=${since}&limit=${limit}` : `?limit=${limit}`}`);
+
+// Data export/import
+export const exportData = (since?: string) => {
+  const headers: Record<string, string> = {};
+  if (_token) headers["Authorization"] = `Bearer ${_token}`;
+  const url = since ? `${BASE}/api/v1/org/export?since=${since}` : `${BASE}/api/v1/org/export`;
+  return fetch(url, { headers }).then(r => r.json());
+};
