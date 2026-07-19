@@ -597,22 +597,23 @@ def _sync_daemon(db):
 
 # === 数据导入 ===
 @app.post("/api/v1/org/import")
-def import_data(authorization: str = Header(None), request: Request = None):
+async def import_data(request: Request, authorization: str = Header(None)):
     payload = decode_auth_header(authorization or "")
     if payload['role'] != 'admin':
         raise HTTPException(403, "Only admin can import data")
+    import json as _json
+    body = await request.body()
+    try:
+        data = _json.loads(body.decode('utf-8'))
+    except Exception:
+        raise HTTPException(400, "Invalid JSON body")
+
     db = get_db()
-
-    # 从请求体或原始body获取数据
-    async def _do_import(data):
-        # Support user_mapping in payload
-        user_mapping = data.get('user_mapping', {})
-        org_data = {k: v for k, v in data.items() if k != 'user_mapping'}
-        stats = db.import_org_data(org_data, payload['org_id'], user_mapping)
-        log_audit(payload['user_id'], 'import_data', 'organization', payload['org_id'], stats)
-        return stats
-
-    return execute_write(_do_import)
+    user_mapping = data.get('user_mapping', {})
+    org_data = {k: v for k, v in data.items() if k != 'user_mapping'}
+    stats = db.import_org_data(org_data, payload['org_id'], user_mapping)
+    log_audit(payload['user_id'], 'import_data', 'organization', payload['org_id'], stats)
+    return stats
 
 # === 数据导出 (支持增量) ===
 @app.get("/api/v1/org/export")
@@ -625,6 +626,8 @@ def export_data(authorization: str = Header(None), since: str = None):
         data['change_log'] = db.get_change_log(payload['org_id'], since)
     else:
         data = db.export_all(payload['org_id'])
+        data['org_id'] = payload['org_id']
+        data['exported_at'] = __import__('datetime').datetime.now().isoformat()
     log_audit(payload['user_id'], 'export_data', 'organization', payload['org_id'])
     return JSONResponse(content=data, headers={"Content-Disposition": "attachment; filename=orgmind-export.json"})
 

@@ -41,7 +41,7 @@ class OrgMindDB:
             self._local.conn.execute("PRAGMA busy_timeout=5000")
             self._local.conn.execute("PRAGMA synchronous=NORMAL")
             self._local.conn.execute("PRAGMA cache_size=-8000")
-            return self._local.conn
+        return self._local.conn
 
     def _init_schema(self):
         c = self._conn()
