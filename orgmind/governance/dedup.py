@@ -34,6 +34,14 @@ async def check_memory_duplicate(
     """
     from sqlalchemy import select, func
     from orgmind.models.memory import Memory
+
+    # 第1步: 哈希精确匹配
+    stmt = select(Memory.id).where(
+        Memory.org_id == org_id,
+        Memory.content_hash == content_hash,
+    )
+    result = await session.execute(stmt)
+    existing = result.scalar_one_or_none()
     if existing:
         return DupResult.EXACT, str(existing), None
 

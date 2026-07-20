@@ -11,8 +11,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from orgmind.models.artifact import Artifact, ArtifactPermission
 from orgmind.config import SKILL_CATALOG_REDIS_KEY, SKILL_CATALOG_TTL
 import redis.asyncio as aioredis  # type: ignore
+from orgmind.config import REDIS_URL
 
-redis_client = aioredis.from_url("redis://localhost:6379", decode_responses=True)
+redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
 
 
 async def get_skill_catalog(

@@ -13,6 +13,11 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
+# ================================================================
+# Server instance — must be created before decorators are applied
+# ================================================================
+server = Server("easywiki")
+
 BASE_URL = "http://127.0.0.1:8080"
 MCP_TOKEN = os.environ.get("EASYWIKI_MCP_TOKEN", "")
 if not MCP_TOKEN:
@@ -122,6 +127,31 @@ async def list_tools() -> list[Tool]:
                 "required": ["entry_id"]
             }
         ),
+        # New: Session lifecycle hooks for zero-config knowledge capture
+        Tool(
+            name="recall_context",
+            description="会话开始时调用：搜索知识库中与当前任务相关的历史记忆，避免重复踩坑。每次开始新任务时自动调用。",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "当前任务描述或关键词"},
+                    "top_k": {"type": "integer", "default": 5},
+                },
+                "required": ["query"]
+            }
+        ),
+        Tool(
+            name="save_session",
+            description="会话结束时调用：自动从对话文本中提取决策、Bug修复、最佳实践等知识并沉淀到EasyWiki。每次会话结束时自动调用。",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_text": {"type": "string", "description": "完整会话文本"},
+                    "session_id": {"type": "string", "description": "会话ID"},
+                },
+                "required": ["session_text"]
+            }
+        ),
     ]
 
 
@@ -203,6 +233,39 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             eid = arguments["entry_id"]
             result = _http_req("GET", f"/api/v1/easywiki/pending-entries/{eid}")
             return [TextContent(type="text", text=json.dumps(result, ensure_ascii=False, indent=2))]
+
+        elif name == "recall_context":
+            # Session start hook — search for relevant memories
+            query = arguments["query"]
+            top_k = arguments.get("top_k", 5)
+            result = _http_req("POST", "/api/v1/retrieve", {"query": query, "top_k": top_k})
+            memories = result.get("results", [])
+            if memories:
+                summary_lines = [f"Found {len(memories)} relevant memories from EasyWiki:"]
+                for i, m in enumerate(memories, 1):
+                    summary_lines.append(f"\n{i}. [score={m.get('score', 0):.2f}] {m.get('content_snippet', '')[:200]}")
+                return [TextContent(type="text", text="\n".join(summary_lines))]
+            else:
+                return [TextContent(type="text", text="No relevant memories found in EasyWiki knowledge base.")]
+
+        elif name == "save_session":
+            # Session end hook — auto-extract and save memories
+            session_text = arguments["session_text"]
+            session_id = arguments.get("session_id", "")
+            from orgmind.connector import on_session_end
+            result = on_session_end(session_text=session_text, session_id=session_id)
+            if result.get("written", 0) > 0:
+                return [TextContent(type="text", text=json.dumps({
+                    "status": "saved",
+                    "written": result["written"],
+                    "total_extracted": result.get("total_extracted", 0),
+                    "message": f"EasyWiki auto-saved {result['written']} memories from this session."
+                }, ensure_ascii=False, indent=2))]
+            else:
+                return [TextContent(type="text", text=json.dumps({
+                    "status": "no_memories",
+                    "message": "No extractable memories found in this session."
+                }, ensure_ascii=False))]
 
         else:
             return [TextContent(type="text", text=json.dumps({"error": f"Unknown tool: {name}"}))]

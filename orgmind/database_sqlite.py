@@ -633,12 +633,9 @@ class OrgMindDB:
         )
         self.commit()
 
-    def get_audit_logs(self, org_id: str = "", limit: int = 100) -> List[Dict]:
-        rows = self.execute(
-            "SELECT a.*, u.name as user_name FROM audit_logs a LEFT JOIN users u ON a.user_id = u.id "
-            "ORDER BY a.created_at DESC LIMIT ?", (limit,)
-        ).fetchall()
-        return [dict(r) for r in rows]
+    # NOTE: get_audit_logs is defined above with org_id filtering + pagination.
+    # The duplicate definition that was here (without org_id filter) has been removed
+    # to prevent it from silently overriding the correct version.
 
     def create_version_snapshot(self, resource_type: str, resource_id: str, content: str, user_id: str, summary: str = ""):
         """保存文档/artifact历史版本"""

@@ -106,3 +106,9 @@ export const exportData = (since?: string) => {
   const url = since ? `${BASE}/api/v1/org/export?since=${since}` : `${BASE}/api/v1/org/export`;
   return fetch(url, { headers }).then(r => r.json());
 };
+
+// Agent detection & connection (zero-config onboarding)
+export const detectAgents = () =>
+  request<{ agents: any[]; total: number }>("GET", "/api/v1/agents/detect");
+export const connectAgent = (agentId: string) =>
+  request<{ connected: boolean; status: string; message: string; config_path?: string }>("POST", "/api/v1/agents/connect", { agent_id: agentId });

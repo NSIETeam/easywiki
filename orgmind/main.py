@@ -65,7 +65,7 @@ app = FastAPI(
 # Middleware: CORS -> RLS -> RateLimit -> Metrics
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=os.getenv("CORS_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080,http://localhost:5173,http://127.0.0.1:5173").split(","),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

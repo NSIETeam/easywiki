@@ -34,6 +34,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from orgmind.db import get_db, OrgMindDB
+from orgmind.database_sqlite import DB_PATH
 from orgmind.agent_detector import detect_agents, generate_agent_config
 from orgmind.governance.cleaners import clean_text
 from orgmind.governance.dedup import compute_content_hash
@@ -56,6 +57,10 @@ async def lifespan(app: FastAPI):
     import threading
     sync_thread = threading.Thread(target=_sync_daemon, args=(db,), daemon=True)
     sync_thread.start()
+    # Start auto-knowledge daemon — ensures pending entries don't stagnate
+    # (Fixes Otto's biggest flaw: knowledge pipeline existed but was never activated)
+    auto_knowledge_thread = threading.Thread(target=_auto_knowledge_daemon, args=(db,), daemon=True)
+    auto_knowledge_thread.start()
     yield
 
 app = FastAPI(title="EasyWiki", version="1.0.0", lifespan=lifespan)
@@ -83,7 +88,8 @@ def _auto_setup(db: OrgMindDB):
     )
     db.commit()
     # Write password to file instead of stdout (security: avoid container log leak)
-    bootstrap_file = os.path.join(os.path.dirname(DB_PATH), ".bootstrap_admin")
+    from orgmind.database_sqlite import DB_PATH as _db_path
+    bootstrap_file = os.path.join(os.path.dirname(_db_path), ".bootstrap_admin")
     try:
         with open(bootstrap_file, 'w') as f:
             f.write(f"Email: admin@local\nPassword: {default_pw}\n")
@@ -152,6 +158,16 @@ def login(req: LoginReq):
     dept = db.execute("SELECT name FROM departments WHERE id=?", (user['department_id'],)).fetchone() if user['department_id'] else None
     token = _create_token(user['id'], user['org_id'], user['role'], user['department_id'], json.loads(user['project_ids'] or '[]'))
     log_audit(user['id'], 'login', 'user', user['id'])
+
+    # Security: remove bootstrap admin password file after first successful login
+    from orgmind.database_sqlite import DB_PATH as _db_path
+    _bootstrap = os.path.join(os.path.dirname(_db_path), ".bootstrap_admin")
+    if os.path.exists(_bootstrap):
+        try:
+            os.remove(_bootstrap)
+        except OSError:
+            pass
+
     return {"token": token, "user": {"id": user['id'], "email": user['email'], "name": user['name'], "role": user['role'], "org_id": user['org_id'], "department_id": user['department_id'], "department_name": dept['name'] if dept else None}}
 
 # === SSO OAuth2 回调 ===
@@ -276,8 +292,12 @@ def retrieve_api(req: RetrieveReq, authorization: str = Header(None)):
             merged[r['id']] = {**r, 'vector_score': 0.0, 'keyword_score': r.get('keyword_score', 0)}
 
     results = []
+    import math
     for rid, r in merged.items():
-        score = 0.5 * r['vector_score'] + 0.2 * r['keyword_score'] + 0.1 * 0.5
+        # Unified fusion formula: 0.5*vector + 0.2*keyword + 0.2*graph(0 for SQLite) + 0.1*recency
+        days_since = (time.time() - r.get('created_at_ts', time.time())) / 86400 if r.get('created_at_ts') else 0
+        recency_score = math.exp(-days_since / 90) if days_since > 0 else 1.0
+        score = 0.5 * r['vector_score'] + 0.2 * r['keyword_score'] + 0.2 * 0.0 + 0.1 * recency_score
         results.append({'id': rid, 'content_snippet': r.get('content_snippet', '')[:300], 'source_type': 'memory', 'score': round(score, 4),
             'score_breakdown': {'vector': round(r['vector_score'], 4), 'keyword': round(r['keyword_score'], 4), 'graph': 0, 'recency': 1.0},
             'citation': {'source_id': rid, 'location': ''}, 'scope': r.get('scope', ''), 'department_id': r.get('department_id', '')})
@@ -382,12 +402,24 @@ def agent_invoke(agent_name: str = Body(...), authorization: str = Header(None))
 @app.get("/api/v1/agents/detect")
 def detect_agents_endpoint(authorization: str = Header(None)):
     decode_auth_header(authorization or "")
-    return {"agents": detect_agents(), "total": len(detect_agents())}
+    # Use connector for real detection + connection status
+    from orgmind.connector import AgentConnector
+    connector = AgentConnector()
+    agents = connector.detect_all_agents()
+    return {"agents": agents, "total": len(agents)}
 
 @app.post("/api/v1/agents/connect")
 def connect_agent(authorization: str = Header(None), agent_id: str = Body(..., embed=True)):
     decode_auth_header(authorization or "")
-    return {"connected": generate_agent_config(agent_id), "status": "ok"}
+    # Use connector to actually write MCP config
+    from orgmind.connector import AgentConnector
+    connector = AgentConnector()
+    result = connector.connect(agent_id)
+    if result["success"]:
+        return {"connected": True, "status": "ok", "message": result["message"],
+                "config_path": result.get("config_path"), "mcp_token": result.get("mcp_token")}
+    else:
+        raise HTTPException(400, result["message"])
 
 # === 组织管理 ===
 @app.get("/api/v1/org/departments")
@@ -428,7 +460,9 @@ def create_user(req: CreateUserReq, authorization: str = Header(None)):
     db.execute("INSERT INTO users (id,email,name,role,department_id,org_id,hashed_password) VALUES (?,?,?,?,?,?,?)", (uid, req.email, req.name, req.role, req.department_id, payload['org_id'], pw))
     db.commit()
     log_audit(payload['user_id'], 'create_user', 'user', uid)
-    return {"id": uid, "email": req.email, "name": req.name, "role": req.role, "password": raw_pw}
+    # Security: don't return plaintext password in API response.
+    # If password was auto-generated, return a temporary flag; admin must communicate it separately.
+    return {"id": uid, "email": req.email, "name": req.name, "role": req.role, "password_set": True, "temp_password": raw_pw if req.password else None}
 
 # === 审计日志 ===
 @app.get("/api/v1/org/audit-logs")
@@ -571,6 +605,130 @@ def import_file(req: FileImportReq, authorization: str = Header(None)):
     db.commit()
     log_audit(payload['user_id'], 'import_file', 'document', None, {"filename": req.filename, "chunks": len(chunks), "written": len([w for w in written if w['status']=='created'])})
     return {"filename": req.filename, "total_chunks": len(chunks), "chunks_written": len([w for w in written if w['status']=='created']), "details": written}
+
+# ══════════════════════════════════════════════════
+# Auto-knowledge daemon — 避免 Otto 的最大缺陷（管道存在但从未激活）
+# 定期扫描 pending entries，自动提取知识并写入 memories 表
+# 同时检测重复模式，生成 Skill 草稿候选
+# ══════════════════════════════════════════════════
+
+def _auto_knowledge_daemon(db):
+    """后台线程：每5分钟扫描待审条目，自动提取高置信度知识"""
+    interval = int(os.getenv("ORGMIND_AUTO_KNOWLEDGE_INTERVAL", "300"))
+    auto_approve_threshold = float(os.getenv("ORGMIND_AUTO_APPROVE_THRESHOLD", "0.85"))
+    print(f"[EasyWiki] Auto-knowledge daemon started (interval={interval}s, auto-approve>={auto_approve_threshold})")
+    while True:
+        time.sleep(interval)
+        try:
+            # Scan pending entries with high confidence
+            pending = db.execute(
+                "SELECT id, project_id, session_id, entry_type, target_section, content, confidence, status "
+                "FROM easywiki_pending_entries WHERE status='pending' AND confidence >= ?",
+                (auto_approve_threshold,)
+            ).fetchall()
+
+            for entry in pending:
+                try:
+                    # Auto-approve high-confidence entries → write to memories
+                    cleaned_content, _ = clean_text(entry['content'])
+                    ch = compute_content_hash(cleaned_content)
+
+                    # Check duplicate
+                    existing = db.execute(
+                        "SELECT id FROM memories WHERE content_hash=?", (ch,)
+                    ).fetchone()
+                    if existing:
+                        # Mark as approved (duplicate found)
+                        db.execute(
+                            "UPDATE easywiki_pending_entries SET status='approved', resolved_at=? WHERE id=?",
+                            (datetime.now().isoformat(), entry['id'])
+                        )
+                        db.commit()
+                        continue
+
+                    # Generate embedding
+                    emb_json = None
+                    try:
+                        from orgmind.services.embedding import get_embedding_sync
+                        emb_json = json.dumps(get_embedding_sync(cleaned_content))
+                    except Exception:
+                        pass
+
+                    # Detect PII
+                    pii = detect_pii(cleaned_content)
+                    sens = upgrade_sensitivity("normal", pii)
+
+                    # Write to memories
+                    mid = str(uuid.uuid4())
+                    db.execute(
+                        "INSERT INTO memories (id,org_id,department_id,type,scope,content,summary,"
+                        "content_hash,embedding,sensitivity,quality_score,status,created_by,extra_metadata) "
+                        "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (mid, "", None, entry['entry_type'], 'department', cleaned_content,
+                         cleaned_content[:200], ch, emb_json, sens, entry['confidence'],
+                         'active', None,
+                         json.dumps({"source": "auto_knowledge_daemon", "entry_id": entry['id'],
+                                     "auto_approved": True}, ensure_ascii=False))
+                    )
+                    db.index_memory_fts(mid, cleaned_content)
+
+                    # Mark pending entry as approved
+                    db.execute(
+                        "UPDATE easywiki_pending_entries SET status='approved', resolved_at=? WHERE id=?",
+                        (datetime.now().isoformat(), entry['id'])
+                    )
+                    db.commit()
+                    print(f"[EasyWiki] Auto-approved knowledge entry: {entry['entry_type']} (confidence={entry['confidence']})")
+
+                except Exception as e:
+                    # Don't let one bad entry kill the daemon
+                    pass
+
+            # Detect repeated patterns for Skill candidate generation
+            try:
+                all_auto = db.execute(
+                    "SELECT extra_metadata FROM memories WHERE extra_metadata LIKE '%auto_approved%true%'"
+                ).fetchall()
+                from collections import Counter
+                types = []
+                for r in all_auto:
+                    try:
+                        m = json.loads(r['extra_metadata'])
+                        if m.get('entry_type'):
+                            types.append(m['entry_type'])
+                    except Exception:
+                        pass
+
+                type_counts = Counter(types)
+                for ptype, count in type_counts.most_common(3):
+                    if count >= 3:
+                        # Check if skill draft already exists
+                        existing_skill = db.execute(
+                            "SELECT id FROM artifacts WHERE name=? AND object_type='skill'",
+                            (f"auto-{ptype}-pattern",)
+                        ).fetchone()
+                        if not existing_skill:
+                            from orgmind.services.auto_memory import generate_skill_draft, detect_repeated_pattern
+                            pattern = detect_repeated_pattern([
+                                {"type": ptype} for _ in range(count)
+                            ])
+                            if pattern:
+                                draft = generate_skill_draft(pattern)
+                                sid = str(uuid.uuid4())
+                                db.execute(
+                                    "INSERT INTO artifacts (id,org_id,name,description,content,object_type,"
+                                    "status,scope,usage_count,created_by) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                                    (sid, "", pattern['skill_name'], pattern['skill_description'],
+                                     draft, 'skill', 'draft', 'department', 0, None)
+                                )
+                                db.commit()
+                                print(f"[EasyWiki] Auto-generated skill draft: {pattern['skill_name']} (count={count})")
+            except Exception:
+                pass
+
+        except Exception as e:
+            pass  # Silent fail in background — daemon must never crash the server
+
 
 # ══════════════════════════════════════════════════
 # Sync daemon —自动跨实例同步

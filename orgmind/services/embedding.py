@@ -4,7 +4,7 @@ Embedding 服务 — v2.1
 降级: OpenAI text-embedding-3-small
 再降级: SHA256 伪向量 (仅用于测试)
 """
-import os, hashlib, random, logging
+import os, hashlib, random, logging, threading
 from typing import List
 from orgmind.config import EMBEDDING_MODEL, EMBEDDING_DIM
 
@@ -14,12 +14,17 @@ _model = None
 _model_loaded = False
 _use_openai = False
 _openai_client = None
+_model_lock = threading.Lock()
 
 
 def _load_model():
     global _model, _model_loaded, _use_openai, _openai_client
     if _model_loaded:
         return
+
+    with _model_lock:
+        if _model_loaded:  # Double-check after acquiring lock
+            return
 
     # Demo mode: skip heavy models, use pseudo vectors
     if os.getenv("ORGMIND_DEMO_MODE", "").lower() == "true" or EMBEDDING_MODEL == "pseudo":
