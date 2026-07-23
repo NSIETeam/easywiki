@@ -789,6 +789,11 @@ def export_data(authorization: str = Header(None), since: str = None):
     log_audit(payload['user_id'], 'export_data', 'organization', payload['org_id'])
     return JSONResponse(content=data, headers={"Content-Disposition": "attachment; filename=orgmind-export.json"})
 
+# === OrionStar standalone frontend (product KB + AI writer, independent from EasyWiki SPA) ===
+_ORIONSTAR_DIR = Path(__file__).parent.parent / "orionstar"
+if _ORIONSTAR_DIR.exists():
+    app.mount("/orionstar", StaticFiles(directory=str(_ORIONSTAR_DIR), html=True), name="orionstar")
+
 # === SPA ===
 if _FRONTEND_DIST.exists():
     app.mount("/assets", StaticFiles(directory=str(_FRONTEND_DIST / "assets")), name="assets")

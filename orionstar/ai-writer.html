@@ -1,0 +1,174 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OrionStar AI Writer</title><style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111827}
+:root{--accent:#2563EB;--navy:#0A2E6C;--radius:8px;--border:#E5E7EB;--bg:#F9FAFB}
+.hidden{display:none!important}
+header{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
+header .brand{font-size:16px;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:8px}
+header .brand .star{display:inline-block;width:14px;height:14px;background:var(--navy);clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%)}
+header nav{display:flex;gap:4px}
+header nav a{text-decoration:none;color:#6B7280;font-size:13px;padding:6px 14px;border-radius:6px;transition:.15s;font-weight:500}
+header nav a:hover{background:var(--bg);color:#111827}
+header nav a.active{background:#EFF6FF;color:var(--accent)}
+header .user{display:flex;align-items:center;gap:10px;font-size:12px;color:#9CA3AF}
+header .user button{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;color:#6B7280}
+.main{padding:24px;max-width:900px;margin:0 auto}
+h1{font-size:22px;font-weight:700;color:#111827;margin-bottom:4px}
+h2{font-size:14px;font-weight:600;color:#111827;margin-bottom:10px}
+.subtitle{font-size:13px;color:#9CA3AF;margin-bottom:24px}
+.section{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.section h2{margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+select,input[type=text],textarea{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;font-family:inherit}
+select:focus,input:focus,textarea:focus{border-color:var(--accent)}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+.col{flex:1;min-width:200px}
+label{display:block;font-size:12px;font-weight:500;color:#374151;margin-bottom:4px}
+.tag-grid{display:flex;flex-wrap:wrap;gap:6px}
+.tag{padding:6px 14px;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:#fff;color:#374151;transition:.15s}
+.tag:hover{border-color:var(--accent);color:var(--accent)}
+.tag.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ref-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:8px}
+.ref-card{padding:12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:.15s;font-size:13px;color:#374151}
+.ref-card:hover,.ref-card.on{border-color:var(--accent);background:#EFF6FF}
+.ref-card.on::after{content:' +';float:right;color:var(--accent);font-weight:700}
+.gen-btn{width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:.15s;margin-top:16px}
+.gen-btn:hover{background:#1D4ED8}
+.gen-btn:disabled{background:#9CA3AF;cursor:not-allowed}
+.result-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-top:16px;min-height:200px;max-height:600px;overflow-y:auto;font-size:14px;line-height:1.8;white-space:pre-wrap}
+.result-actions{display:flex;gap:8px;margin-top:12px}
+.result-actions button{padding:8px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border)}
+.btn-copy{background:#EFF6FF;color:var(--accent);border-color:#BFDBFE}
+.btn-regen{background:var(--bg);color:#374151}
+.status{font-size:13px;color:#9CA3AF;margin-left:12px}
+.ctx-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.ctx-tag{display:flex;align-items:center;gap:6px;padding:4px 10px;border-radius:4px;font-size:12px;background:#EFF6FF;color:var(--accent);border:1px solid #BFDBFE}
+.ctx-tag button{background:none;border:none;cursor:pointer;color:var(--accent);font-weight:700;font-size:14px;padding:0}
+.product-search{position:relative}
+.product-search input{border-radius:8px 8px 0 0}
+.product-search .dropdown{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--accent);border-top:none;border-radius:0 0 8px 8px;max-height:200px;overflow-y:auto;z-index:50}
+.dropdown-item{padding:8px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid #F3F4F6}
+.dropdown-item:hover{background:var(--bg)}
+.dropdown-item .en{font-size:11px;color:#9CA3AF;margin-left:4px}
+</style></head><body>
+<header><div class="brand"><span class="star"></span>ORIONSTAR <span style="font-weight:400;color:#9CA3AF;font-size:12px">AI Content Writer</span></div>
+<nav><a href="index.html">Products</a><a href="#" class="active">AI Writer</a></nav>
+<div class="user"><span id="userName"></span><button onclick="logout();location.href='index.html'">Sign Out</button></div></header>
+
+<div class="main">
+<h1>AI Content Writer</h1>
+<p class="subtitle">Select product, template, model and language. AI generates marketing content in 60 languages.</p>
+
+<div class="section"><h2>1. Product</h2>
+<div class="product-search"><input id="productInput" placeholder="Search product..." oninput="searchProduct()"><div class="dropdown hidden" id="productDropdown"></div></div>
+<div class="ctx-tags" id="selectedProductTag"></div></div>
+
+<div class="section"><h2>2. Template</h2><div class="tag-grid" id="templateTags"></div></div>
+
+<div class="section"><h2>3. AI Model</h2><div class="row"><div class="col"><label>Article Models (10)</label><select id="articleModel"></select></div><div class="col"><label>Image Models (5)</label><select id="imageModel"><option value="">For poster/banner generation</option></select></div><div class="col"><label>Video Models (5)</label><select id="videoModel"><option value="">For video script generation</option></select></div></div></div>
+
+<div class="section"><h2>4. Language</h2><div class="tag-grid" id="langTags"></div></div>
+
+<div class="section"><h2>5. Reference Materials</h2><p style="font-size:12px;color:#9CA3AF;margin-bottom:10px">Check the materials to include in the generation context</p>
+<div class="ref-grid" id="refGrid"></div><div class="ctx-tags" id="refTags" style="margin-top:8px"></div></div>
+
+<button class="gen-btn" id="genBtn" onclick="generate()">Generate Content</button>
+<span class="status" id="genStatus"></span>
+
+<div id="resultArea" class="hidden"><div class="result-box" id="resultContent"></div>
+<div class="result-actions"><button class="btn-copy" onclick="copyResult()">Copy Full Text</button><button class="btn-regen" onclick="generate()">Regenerate</button></div></div></div>
+
+<script src="app.js"></script>
+<script>
+var models={};var languages={};var templates=[];
+var selected={product:null,template:null,model:null,language:'zh',refs:[]};
+var allProducts=[];
+
+if(!isLoggedIn())location.href='index.html';
+document.getElementById('userName').textContent=getUser().name;
+
+async function init(){
+ try{
+  models=await getModels();languages=await getLanguages();templates=(await getTemplates()).templates||[];
+  var r=await getProducts({});allProducts=r.products||[];
+  renderTemplates();renderModels();renderLanguages();
+ }catch(e){alert('Init failed: '+e.message)}
+}
+
+function renderTemplates(){
+ document.getElementById('templateTags').innerHTML=templates.map(function(t){
+  return'<span class="tag'+(selected.template===t.id?' on':'')+'" onclick="selectTemplate(''+t.id+'')">'+t.name+'</span>'}).join('')
+}
+
+function renderModels(){
+ var a=models.article||[];var i=models.image||[];var v=models.video||[];
+ document.getElementById('articleModel').innerHTML='<option value="">Select article model</option>'+a.map(function(m){return'<option value="'+m.id+'"'+(selected.model===m.id?' selected':'')+'>'+m.name+' ('+m.provider+') - '+m.desc+'</option>'}).join('');
+ document.getElementById('imageModel').innerHTML='<option value="">For poster/banner generation</option>'+i.map(function(m){return'<option value="'+m.id+'">'+m.name+' ('+m.provider+')</option>'}).join('');
+ document.getElementById('videoModel').innerHTML='<option value="">For video script generation</option>'+v.map(function(m){return'<option value="'+m.id+'">'+m.name+' ('+m.provider+')</option>'}).join('');
+ document.getElementById('articleModel').onchange=function(){selected.model=this.value}
+}
+
+var LANG_KEYS=Object.keys(languages).slice(0,20);
+function renderLanguages(){
+ document.getElementById('langTags').innerHTML=LANG_KEYS.map(function(k){
+  return'<span class="tag'+(selected.language===k?' on':'')+'" onclick="selectLang(''+k+'')">'+languages[k]+' ('+k+')</span>'}).join('')+'<span style=font-size:12px;color:#9CA3AF;margin-left:8px;line-height:2>+40 more languages available</span>'
+}
+
+function selectTemplate(id){selected.template=id;renderTemplates()}
+function selectLang(k){selected.language=k;renderLanguages()}
+
+function searchProduct(){
+ var q=document.getElementById('productInput').value.toLowerCase();
+ var dd=document.getElementById('productDropdown');
+ if(!q){dd.classList.add('hidden');return}
+ var matches=allProducts.filter(function(p){return p.name.toLowerCase().includes(q)||(p.name_zh||'').includes(q)||(p.description||'').toLowerCase().includes(q)}).slice(0,8);
+ dd.innerHTML=matches.map(function(p){return'<div class=dropdown-item onclick="selectProduct(''+p.product_key+'')">'+p.name+' <span class=en>'+p.name_zh+'</span> <span style=color:#9CA3AF;font-size:11px>['+p.region+']</span></div>'}).join('');
+ dd.classList.toggle('hidden',!matches.length)
+}
+
+function selectProduct(key){
+ selected.product=key;
+ var p=allProducts.find(function(x){return x.product_key===key});
+ document.getElementById('productInput').value=p?p.name:'';
+ document.getElementById('productDropdown').classList.add('hidden');
+ document.getElementById('selectedProductTag').innerHTML=p?'<span class=ctx-tag>'+p.name+' <button onclick="selected.product=null;document.getElementById('productInput').value='';document.getElementById('selectedProductTag').innerHTML=''">x</button></span>':'';
+ if(p)renderReferences(p)
+}
+
+function renderReferences(p){
+ var items=[];
+ if(p.highlights&&p.highlights.length)items=items.concat(p.highlights.map(function(h,i){return{type:'highlight',text:h,key:'h'+i}}));
+ var specs=p.specifications||{};
+ if(Object.keys(specs).length)items=items.concat(Object.entries(specs).map(function(e){return{type:'spec',text:e[0]+': '+e[1],key:'s'+e[0]}}));
+ document.getElementById('refGrid').innerHTML=items.map(function(it){
+  var on=selected.refs.indexOf(it.key)>=0;
+  return'<div class="ref-card'+(on?' on':'')+'" onclick="toggleRef(''+it.key+'')">['+(it.type==='highlight'?'Highlight':'Spec')+'] '+it.text.replace(/'/g,"\'")+'</div>'}).join('')}
+
+window._refItems=[];
+function toggleRef(key){
+ var i=selected.refs.indexOf(key);
+ if(i>=0)selected.refs.splice(i,1);else selected.refs.push(key);
+ document.querySelectorAll('.ref-card').forEach(function(c,i){c.classList.toggle('on',selected.refs.indexOf(c.getAttribute('onclick').match(/'([^']+)'/)[1])>=0)})
+}
+
+async function generate(){
+ if(!selected.product){alert('Please select a product');return}
+ if(!selected.template){alert('Please select a template');return}
+ var m=document.getElementById('articleModel').value||'kimi-k3';
+ selected.model=m;
+ var btn=document.getElementById('genBtn');var st=document.getElementById('genStatus');
+ btn.disabled=true;st.textContent='Generating...';
+ try{
+  var r=await generateContent({template_id:selected.template,product_key:selected.product,model_id:m,language:selected.language,refs:selected.refs});
+  if(r.ok){document.getElementById('resultArea').classList.remove('hidden');document.getElementById('resultContent').textContent=r.content;st.textContent='Done. '+r.content.length+' chars'}
+  else st.textContent='Error: '+r.error
+ }catch(e){st.textContent='Error: '+e.message}
+ btn.disabled=false}
+
+function copyResult(){
+ var t=document.getElementById('resultContent').textContent;
+ navigator.clipboard.writeText(t).then(function(){alert('Copied!')})}
+
+document.addEventListener('click',function(e){if(!e.target.closest('.product-search'))document.getElementById('productDropdown').classList.add('hidden')});
+init();
+</script></body></html>
