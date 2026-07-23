@@ -1,0 +1,38 @@
+{
+  "wangmeng12@cmcm.com": {
+    "password": "adgjm123ptw",
+    "name": "\u738b\u8499",
+    "role": "admin",
+    "permissions": [
+      "domestic:read",
+      "domestic:write",
+      "overseas:read",
+      "overseas:write",
+      "admin"
+    ],
+    "created_at": 1783333721.069738
+  },
+  "demo": {
+    "password": "demo2026",
+    "name": "\u6f14\u793a\u8d26\u53f7",
+    "role": "viewer",
+    "permissions": [
+      "domestic:read",
+      "overseas:read"
+    ],
+    "created_at": 1783333721.069738
+  },
+  "18301518109": {
+    "password": "adgjm123ptw",
+    "name": "\u738b\u8499",
+    "role": "admin",
+    "permissions": [
+      "domestic:read",
+      "domestic:write",
+      "overseas:read",
+      "overseas:write",
+      "admin"
+    ],
+    "created_at": 1783387513.6904309
+  }
+}

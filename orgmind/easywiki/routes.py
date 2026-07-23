@@ -779,3 +779,100 @@ def sync_push(authorization: str = Header(None)):
         return {"results": results}
 
     return execute_write(_push)
+
+
+# ============================================================
+# OrionStar — Product Knowledge Base + AI Content Generation
+# ============================================================
+
+@router.get("/products")
+def list_products(region: str = None, category: str = None, keyword: str = None, authorization: str = Header(None)):
+    """List all products with optional region/category/keyword filters"""
+    payload = decode_auth_header(authorization)
+    from orgmind.easywiki.products import get_products
+    products = get_products(payload['org_id'], category, region, keyword)
+    return {"products": products, "total": len(products)}
+
+
+@router.get("/products/{product_key}")
+def get_product_detail(product_key: str, authorization: str = Header(None)):
+    """Get a single product by its key"""
+    payload = decode_auth_header(authorization)
+    from orgmind.easywiki.products import get_product
+    p = get_product(payload['org_id'], product_key)
+    if not p:
+        raise HTTPException(404, "Product not found")
+    return p
+
+
+@router.get("/products/search")
+def search_products(q: str, authorization: str = Header(None)):
+    """Full-text search across product names, descriptions, and keywords"""
+    payload = decode_auth_header(authorization)
+    from orgmind.easywiki.products import search_products
+    return {"products": search_products(payload['org_id'], q), "query": q}
+
+
+@router.post("/products/seed")
+def seed_orionstar(authorization: str = Header(None)):
+    """One-time seed: import 21 OrionStar products + 10 content templates"""
+    payload = decode_auth_header(authorization)
+    if payload['role'] != 'admin':
+        raise HTTPException(403, "Only admin can seed products")
+    from orgmind.easywiki.products import seed_orionstar_products
+    result = seed_orionstar_products(payload['org_id'])
+    log_audit(payload['user_id'], 'seed_orionstar_products', 'product', None, result)
+    return result
+
+
+# === Content Generation ===
+@router.get("/models")
+def get_ai_models(authorization: str = Header(None)):
+    """Get available AI models grouped by family (article/image/video)"""
+    decode_auth_header(authorization)
+    from orgmind.easywiki.generator import get_models
+    return get_models()
+
+
+@router.get("/languages")
+def get_languages(authorization: str = Header(None)):
+    """Get 60 supported output languages"""
+    decode_auth_header(authorization)
+    from orgmind.easywiki.generator import get_languages
+    return get_languages()
+
+
+@router.get("/templates")
+def list_templates(authorization: str = Header(None)):
+    """Get 10 content generation templates"""
+    payload = decode_auth_header(authorization)
+    from orgmind.easywiki.products import get_templates
+    return {"templates": get_templates(payload['org_id'])}
+
+
+@router.post("/generate")
+def generate_article(body: dict = Body(...), authorization: str = Header(None)):
+    """Generate content: select template, product, model, language and optional reference selections"""
+    payload = decode_auth_header(authorization)
+    from orgmind.easywiki.generator import generate_content
+    result = generate_content(
+        template_id=body['template_id'],
+        product_key=body['product_key'],
+        model_id=body['model_id'],
+        language=body.get('language', 'zh'),
+        org_id=payload['org_id'],
+        user_id=payload['user_id'],
+        highlights=body.get('highlights'),
+        specs=body.get('specs'),
+    )
+    if result['ok']:
+        log_audit(payload['user_id'], 'generate_content', 'generated_output', result.get('output_id'), {"model": body['model_id'], "language": body.get('language','zh')})
+    return result
+
+
+@router.get("/outputs")
+def list_outputs(limit: int = 20, authorization: str = Header(None)):
+    """List recent generated outputs"""
+    payload = decode_auth_header(authorization)
+    from orgmind.easywiki.products import get_outputs
+    return {"outputs": get_outputs(payload['org_id'], payload['user_id'], limit)}

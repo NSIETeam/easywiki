@@ -238,6 +238,32 @@ class OrgMindDB:
             content_snapshot TEXT,
             created_at TEXT DEFAULT (datetime('now'))
         );
+        CREATE TABLE IF NOT EXISTS products (
+            id TEXT PRIMARY KEY, org_id TEXT NOT NULL,
+            product_key TEXT NOT NULL UNIQUE,
+            name TEXT NOT NULL, name_zh TEXT, description TEXT,
+            region TEXT DEFAULT 'overseas', category TEXT, keywords TEXT,
+            status TEXT DEFAULT 'active', sort_order INTEGER DEFAULT 0,
+            assets TEXT DEFAULT '{}', highlights TEXT DEFAULT '[]',
+            specifications TEXT DEFAULT '{}', scenes TEXT DEFAULT '[]',
+            cases TEXT DEFAULT '[]', solutions TEXT DEFAULT '[]',
+            created_at TEXT DEFAULT (datetime('now')),
+            updated_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS content_templates (
+            id TEXT PRIMARY KEY, org_id TEXT NOT NULL,
+            name TEXT NOT NULL, article_type TEXT NOT NULL,
+            category TEXT, model_family TEXT DEFAULT 'article',
+            prompt_template TEXT NOT NULL, description TEXT,
+            icon TEXT DEFAULT 'document', created_at TEXT DEFAULT (datetime('now'))
+        );
+        CREATE TABLE IF NOT EXISTS generated_outputs (
+            id TEXT PRIMARY KEY, org_id TEXT NOT NULL, user_id TEXT NOT NULL,
+            article_type TEXT, model_used TEXT, language TEXT DEFAULT 'zh',
+            prompt TEXT, content TEXT NOT NULL,
+            product_id TEXT, template_id TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        );
         """)
         # FTS5 全文索引 (中文分词由 jieba 在应用层处理)
         try:
