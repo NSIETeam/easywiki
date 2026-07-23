@@ -1,160 +1,155 @@
-<!DOCTYPE html>
-<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>OrionStar Product Knowledge Base</title><style>
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OrionStar Product KB + AI Writer</title><style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111827}
-:root{--accent:#2563EB;--navy:#0A2E6C;--radius:8px;--border:#E5E7EB;--bg:#F9FAFB}
-#loginOverlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#F9FAFB}
-.login-box{width:400px;max-width:90vw;background:#fff;border-radius:12px;border:1px solid var(--border);padding:40px 32px 32px;text-align:center}
-.login-box h1{font-size:20px;font-weight:700;color:var(--navy);margin-bottom:4px}
-.login-box .sub{color:#9CA3AF;font-size:13px;margin-bottom:24px}
-.login-box input{width:100%;padding:10px 12px;margin-bottom:12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none}
-.login-box input:focus{border-color:var(--accent)}
-.login-box button{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
-.login-box button:hover{background:#1D4ED8}
-.login-err{color:#EF4444;font-size:12px;min-height:18px;margin-top:8px}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:#fff;color:#111}
+:root{--blue:#2563EB;--navy:#0A2E6C;--border:#E5E7EB;--bg:#F8FAFC}
 .hidden{display:none!important}
-header{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
-header .brand{font-size:16px;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:8px}
-header .brand .star{display:inline-block;width:14px;height:14px;background:var(--navy);clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%)}
-header nav{display:flex;gap:4px}
-header nav a{text-decoration:none;color:#6B7280;font-size:13px;padding:6px 14px;border-radius:6px;font-weight:500}
-header nav a:hover{background:var(--bg);color:#111827}
-header nav a.active{background:#EFF6FF;color:var(--accent)}
-header .user{display:flex;align-items:center;gap:10px;font-size:12px;color:#9CA3AF}
-header .user button{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;color:#6B7280}
-.toolbar{padding:16px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--border)}
-.toolbar input{padding:8px 12px 8px 32px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;background:var(--bg);flex:1;min-width:200px;max-width:400px}
-.toolbar input:focus{border-color:var(--accent);background:#fff}
-.filter-btn{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:#fff;color:#374151}
-.filter-btn:hover{border-color:var(--accent);color:var(--accent)}
-.filter-btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
-.stats{padding:12px 24px;font-size:12px;color:#9CA3AF}
-.grid{padding:0 24px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
-.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;cursor:pointer}
-.card:hover{border-color:var(--accent);box-shadow:0 2px 12px rgba(0,0,0,.06)}
-.card .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;margin-bottom:8px}
-.badge.clean{background:#ECFDF5;color:#065F46}.badge.delivery{background:#FFF7ED;color:#C2410C}
-.badge.voice{background:#EFF6FF;color:#1D4ED8}.badge.platform{background:#F5F3FF;color:#5B21B6}
-.card h3{font-size:15px;font-weight:600;color:#111827;margin-bottom:2px}
-.card .zh{font-size:12px;color:#9CA3AF;margin-bottom:6px}
-.card .desc{font-size:12px;color:#6B7280;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.card .region{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;border:1px solid var(--border);color:#9CA3AF;margin-top:8px}
-.card .hl-tags{margin-top:8px;display:flex;flex-wrap:wrap;gap:4px}
-.card .hl-tag{padding:2px 8px;border-radius:4px;font-size:11px;background:var(--bg);color:#374151}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding-top:40px}
-.modal{background:#fff;border-radius:12px;width:700px;max-width:90vw;max-height:80vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.12)}
-.modal-header{padding:24px 28px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start}
-.modal-header h2{font-size:20px;font-weight:700;color:#111827}
-.modal-header .close{background:none;border:none;font-size:20px;cursor:pointer;color:#9CA3AF;padding:4px 8px}
-.modal-body{padding:24px 28px}
-.modal-section{margin-bottom:20px}
-.modal-section h3{font-size:13px;font-weight:600;color:var(--accent);margin-bottom:10px}
-.spec-table{width:100%;border-collapse:collapse}
-.spec-table td{padding:8px 12px;font-size:13px;border-bottom:1px solid var(--border)}
-.spec-table td:first-child{color:#6B7280;width:40%;font-weight:500}
-.hl-list{list-style:none}.hl-list li{padding:6px 0;font-size:13px;color:#374151;border-bottom:1px solid #F3F4F6}
-.hl-list li:last-child{border:none}
-.seed-btn{padding:4px 12px;border:1px dashed var(--border);border-radius:6px;font-size:11px;background:none;cursor:pointer;color:#9CA3AF}
-.seed-btn:hover{border-color:var(--accent);color:var(--accent)}
+#loginPage{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0A2E6C,#2563EB)}
+.login{width:360px;background:#fff;border-radius:14px;padding:40px 30px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login h2{font-size:18px;color:var(--navy);margin-bottom:4px}
+.login .sub{font-size:12px;color:#9CA3AF;margin-bottom:24px}
+.login input{width:100%;padding:11px 14px;margin-bottom:12px;border:2px solid var(--border);border-radius:10px;font-size:14px;outline:none}
+.login input:focus{border-color:var(--blue)}
+.login button{width:100%;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;cursor:pointer}
+.login button:hover{background:#1D4ED8}
+.login .err{color:#EF4444;font-size:12px;min-height:18px;margin-top:8px}
+header{height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--border)}
+header .brand{font-weight:700;color:var(--navy);font-size:16px}
+header .user{font-size:12px;color:#9CA3AF;display:flex;align-items:center;gap:8px}
+header .user button{background:none;border:1px solid var(--border);border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer;color:#6B7280}
+.tools{padding:12px 24px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border)}
+.tools input{padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;flex:1;min-width:180px;max-width:360px}
+.tools input:focus{border-color:var(--blue)}
+.fbtn{padding:5px 14px;border-radius:16px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:#fff;color:#374151}
+.fbtn:hover{border-color:var(--blue);color:var(--blue)}
+.fbtn.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.stats{padding:10px 24px;font-size:12px;color:#9CA3AF;display:flex;gap:16px}
+.grid{padding:0 24px 32px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.card{border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:.15s;background:#fff}
+.card:hover{border-color:var(--blue);box-shadow:0 2px 12px rgba(37,99,235,.1)}
+.card .cat{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;margin-bottom:8px}
+.cat.clean{background:#ECFDF5;color:#065F46}.cat.delivery{background:#FFF7ED;color:#C2410C}
+.cat.voice{background:#EFF6FF;color:#1D4ED8}.cat.platform{background:#F5F3FF;color:#5B21B6}
+.card h3{font-size:15px;font-weight:600;margin-bottom:2px}
+.card .zh{font-size:12px;color:#9CA3AF;margin-bottom:4px}
+.card .desc{font-size:12px;color:#6B7280;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.5}
+.card .actions{margin-top:10px;display:flex;gap:6px}
+.card .actions button{padding:4px 12px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--blue)}
+.card .actions button:hover{background:#EFF6FF}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:flex;align-items:flex-start;justify-content:center;padding-top:30px}
+.modal{background:#fff;border-radius:14px;width:720px;max-width:92vw;max-height:82vh;overflow-y:auto;box-shadow:0 12px 48px rgba(0,0,0,.15)}
+.modal-hd{padding:20px 24px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start}
+.modal-hd h2{font-size:18px;font-weight:700}
+.modal-hd .close{background:none;border:none;font-size:20px;cursor:pointer;color:#9CA3AF}
+.modal-bd{padding:20px 24px}
+.modal-sec{margin-bottom:18px}
+.modal-sec h3{font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px;text-transform:uppercase}
+.spec-tbl{width:100%;border-collapse:collapse}
+.spec-tbl td{padding:7px 10px;font-size:12px;border-bottom:1px solid #F3F4F6}
+.spec-tbl td:first-child{color:#6B7280;width:35%}
+.hl-list{list-style:none}
+.hl-list li{padding:5px 0;font-size:13px;color:#374151;border-bottom:1px solid #F3F4F6}
+.modal-bd .gen-btn{display:inline-block;margin-top:12px;padding:8px 20px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+.modal-bd .gen-btn:hover{background:#1D4ED8}
+/* AI Writer panel */
+.ai-panel{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px;margin:16px 24px}
+.ai-panel h3{font-size:15px;font-weight:600;margin-bottom:12px}
+.ai-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.ai-row label{display:block;font-size:11px;font-weight:600;color:#6B7280;margin-bottom:4px}
+.ai-row select,.ai-row input{width:200px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none}
+.ai-row select:focus,.ai-row input:focus{border-color:var(--blue)}
+.ai-gen{display:block;width:100%;padding:10px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px}
+.ai-gen:hover{background:#1D4ED8}
+.ai-gen:disabled{background:#9CA3AF}
+.ai-result{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:12px;min-height:100px;max-height:500px;overflow-y:auto;font-size:13px;line-height:1.8;white-space:pre-wrap}
+.ai-result .btn-row{display:flex;gap:8px;margin-top:12px}
+.ai-result .btn-row button{padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border)}
+.btn-copy{background:#EFF6FF;color:var(--blue);border-color:#BFDBFE}
+.btn-regen{background:var(--bg);color:#374151}
 </style></head><body>
 
-<div id="loginOverlay"><div class="login-box">
-<h1>OrionStar Product KB</h1><div class="sub">Sign in to access the product knowledge base</div>
+<div id="loginPage"><div class="login">
+<h2>OrionStar Product KB</h2><div class="sub">Product Knowledge Base + AI Content Writer</div>
 <input id="loginEmail" placeholder="Email" value="admin@local">
 <input type="password" id="loginPw" placeholder="Password" value="orgmind2026">
-<button onclick="doLogin()">Sign In</button>
-<div class="login-err" id="loginErr"></div></div></div>
+<button onclick="doLogin()">Sign In</button><div class="err" id="loginErr"></div></div></div>
 
 <div id="app" class="hidden">
-<header>
-<div class="brand"><span class="star"></span>ORIONSTAR <span style="font-weight:400;color:#9CA3AF;font-size:12px">Product Knowledge Base</span></div>
-<nav><a href="#" class="active" onclick="showCatalog()">Products</a><a href="ai-writer.html">AI Writer</a></nav>
-<div class="user"><span id="userName"></span><button onclick="doLogout()">Sign Out</button></div></header>
-
-<div class="toolbar">
+<header><div class="brand">ORIONSTAR Product KB</div>
+<div class="user"><span id="userName"></span><button onclick="logout()">Sign Out</button></div></header>
+<div class="tools">
 <input id="searchInput" placeholder="Search products..." oninput="doSearch()">
-<div style="display:flex;gap:6px" id="catFilters">
-<button class="filter-btn on" onclick="setFilter('category','')">All</button>
-<button class="filter-btn" onclick="setFilter('category','clean')">Clean</button>
-<button class="filter-btn" onclick="setFilter('category','delivery')">Delivery</button>
-<button class="filter-btn" onclick="setFilter('category','voice')">Voice</button>
-<button class="filter-btn" onclick="setFilter('category','platform')">Platform</button></div>
-<div style="display:flex;gap:6px" id="regFilters">
-<button class="filter-btn on" onclick="setFilter('region','')">All</button>
-<button class="filter-btn" onclick="setFilter('region','overseas')">Overseas</button>
-<button class="filter-btn" onclick="setFilter('region','domestic')">Domestic</button></div>
-<button class="seed-btn" id="seedBtn" onclick="seed()">+ Seed Data</button></div>
+<div style="display:flex;gap:4px"> <button class="fbtn on" onclick="setFilter('')">All</button><button class="fbtn" onclick="setFilter('clean')">Cleaning</button><button class="fbtn" onclick="setFilter('delivery')">Delivery</button><button class="fbtn" onclick="setFilter('voice')">Voice</button><button class="fbtn" onclick="setFilter('platform')">Platform</button></div>
+<button style="padding:5px 12px;border:1px dashed var(--border);border-radius:6px;font-size:11px;background:none;cursor:pointer;color:#9CA3AF" onclick="seed()">Import Products</button></div>
 <div class="stats" id="stats"></div>
-<div class="grid" id="grid"></div></div>
+<div class="grid" id="grid"></div>
+<div id="aiSection" class="hidden"></div></div>
 
 <div id="modalOverlay" class="modal-overlay hidden" onclick="closeModal(event)"><div class="modal" id="modalContent"></div></div>
 
 <script>
-var _token = localStorage.getItem('os_token');
-var _user = JSON.parse(localStorage.getItem('os_user')||'null');
-var filters={region:'',category:''};
-var CATS={clean:'Cleaning',delivery:'Delivery',voice:'Voice',platform:'Platform'};
+var token=localStorage.getItem('os_token'),user=JSON.parse(localStorage.getItem('os_user')||'null');
+var filter='',allProducts=[],CATS={clean:'Cleaning',delivery:'Delivery',voice:'Voice',platform:'Platform'};
 
 async function doLogin(){
- var el=document.getElementById('loginErr');el.textContent='';
- var email=document.getElementById('loginEmail').value.trim()||'admin@local';
- var pw=document.getElementById('loginPw').value||'orgmind2026';
+ var e=document.getElementById('loginEmail').value.trim()||'admin@local';
+ var p=document.getElementById('loginPw').value||'orgmind2026';
  try{
-  var r=await fetch('/api/v1/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw})});
+  var r=await fetch('/api/v1/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:e,password:p})});
   var d=await r.json();
-  if(!d.token){el.textContent='Login failed: '+(d.detail||'unknown error');return}
-  _token=d.token;_user=d.user;
-  localStorage.setItem('os_token',_token);localStorage.setItem('os_user',JSON.stringify(_user));
-  document.getElementById('loginOverlay').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
-  document.getElementById('userName').textContent=_user.name;
-  load();
- }catch(e){el.textContent='Error: '+e.message}
+  if(!d.token){document.getElementById('loginErr').textContent=d.detail||'Login failed';return}
+  token=d.token;user=d.user;localStorage.setItem('os_token',token);localStorage.setItem('os_user',JSON.stringify(user));
+  document.getElementById('loginPage').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
+  document.getElementById('userName').textContent=user.name;loadAll();
+ }catch(x){document.getElementById('loginErr').textContent='Error: '+x.message}
+}
+function logout(){token=null;user=null;localStorage.removeItem('os_token');localStorage.removeItem('os_user');location.reload()}
+function api(method,path,data){
+ var h={'Content-Type':'application/json'};if(token)h['Authorization']='Bearer '+token;
+ return fetch(path,{method:method,headers:h,body:data?JSON.stringify(data):undefined}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
+}
+function setFilter(f){filter=f;document.querySelectorAll('.fbtn').forEach(function(b){b.classList.toggle('on',b.textContent.toLowerCase()===(f||'all'))});loadAll()}
+function doSearch(){var q=document.getElementById('searchInput').value.trim();if(!q){loadAll();return}
+ api('GET','/api/v1/easywiki/products/search?q='+encodeURIComponent(q)).then(function(r){allProducts=r.products;render()})}
+async function loadAll(){
+ document.getElementById('searchInput').value='';
+ var url='/api/v1/easywiki/products';if(filter)url+='?category='+filter;
+ try{var r=await api('GET',url);allProducts=r.products;render()}catch(e){}
+}
+function render(){
+ var ps=allProducts||[];
+ document.getElementById('stats').innerHTML=ps.length+' products'+(filter?' in '+CATS[filter]:'');
+ if(!ps.length){document.getElementById('grid').innerHTML='<div style="text-align:center;padding:40px;color:#9CA3AF">No products. <a href="#" onclick="seed()" style="color:var(--blue)">Import 21 products</a></div>';return}
+ document.getElementById('grid').innerHTML=ps.map(function(p){return'<div class="card"><span class="cat '+p.category+'">'+(CATS[p.category]||p.category)+'</span><h3>'+p.name+'</h3><div class="zh">'+p.name_zh+'</div><div class="desc">'+p.description+'</div><div class="actions"><button onclick="event.stopPropagation();showDetail(\''+p.product_key+'\')">View Details</button><button onclick="event.stopPropagation();openWriter(\''+p.product_key+'\')">AI Generate Content</button></div></div>'}).join('')
 }
 
-function doLogout(){_token=null;_user=null;localStorage.removeItem('os_token');localStorage.removeItem('os_user');location.reload()}
-
-function api(method,path,data){
- var h={'Content-Type':'application/json'};if(_token)h['Authorization']='Bearer '+_token;
- return fetch(path,{method:method,headers:h,body:data?JSON.stringify(data):undefined}).then(function(r){
-  if(!r.ok)throw new Error('HTTP '+r.status);
-  return r.json()
- })}
-
-function setFilter(t,v){filters[t]=v;
- document.querySelectorAll('#'+(t==='category'?'catFilters':'regFilters')+' .filter-btn').forEach(function(b){
-  var m=t==='category'?CATS[v]:v;b.classList.toggle('on',b.textContent===m||(v===''&&b.textContent==='All'))});load()}
-
-function doSearch(){var q=document.getElementById('searchInput').value.trim();
- if(!q){load();return}
- api('GET','/api/v1/easywiki/products/search?q='+encodeURIComponent(q)).then(function(r){render(r.products,'Search: '+q)}).catch(function(e){document.getElementById('grid').innerHTML='<p style=color:#EF4444>'+e.message+'</p>'})}
-
-function load(){
- document.getElementById('searchInput').value='';
- var p=[];if(filters.region)p.push('region='+filters.region);if(filters.category)p.push('category='+filters.category);
- var q=p.length?'?'+p.join('&'):'';
- api('GET','/api/v1/easywiki/products'+q).then(function(r){
-  render(r.products,(filters.region||filters.category)?(filters.region+' '+filters.category).trim():'All Products')
- }).catch(function(e){document.getElementById('grid').innerHTML='<p style=color:#EF4444>'+e.message+'</p>'})}
-
-function render(products,label){
- if(!products||!products.length){document.getElementById('grid').innerHTML='<div style=grid-column:1/-1;text-align:center;padding:60px;color:#9CA3AF><p style=font-size:16px>No products found</p><p style=font-size:13px>Click Seed Data to import 21 products</p></div>';document.getElementById('stats').textContent='0 products';return}
- document.getElementById('stats').textContent=products.length+' products - '+label;
- document.getElementById('grid').innerHTML=products.map(function(p){return'<div class=card onclick="detail(\''+p.product_key+'\')"><span class="badge '+p.category+'">'+(CATS[p.category]||p.category)+'</span><h3>'+p.name+'</h3><div class=zh>'+(p.name_zh||'')+'</div><div class=desc>'+(p.description||'')+'</div><span class=region>'+p.region+'</span>'+(p.highlights||[]).length?'<div class=hl-tags>'+p.highlights.slice(0,3).map(function(h){return'<span class=hl-tag>'+h+'</span>'}).join('')+'</div>':''+'</div>'}).join('')}
-
-function detail(key){
- api('GET','/api/v1/easywiki/products/'+key).then(function(p){
-  var s=p.specifications||{};var h=p.highlights||[];
+async function showDetail(key){
+ try{var p=await api('GET','/api/v1/easywiki/products/'+key);
+  var s=p.specifications||{},h=p.highlights||[];
   document.getElementById('modalOverlay').classList.remove('hidden');
-  document.getElementById('modalContent').innerHTML='<div class=modal-header><div><h2>'+p.name+'</h2><div style=color:#9CA3AF;font-size:13px;margin-top:2px>'+(p.name_zh||'')+'</div></div><button class=close onclick="document.getElementById(\'modalOverlay\').classList.add(\'hidden\')">&times;</button></div><div class=modal-body><p style=color:#6B7280;font-size:13px;margin-bottom:16px;line-height:1.6>'+(p.description||'')+'</p><span class="badge '+p.category+'" style=margin-bottom:12px>'+(CATS[p.category]||p.category)+'</span><span class=region style=margin-left:8px>'+p.region+'</span>'+(Object.keys(s).length?'<div class=modal-section><h3>Specifications</h3><table class=spec-table>'+Object.entries(s).map(function(e){return'<tr><td>'+e[0]+'</td><td>'+e[1]+'</td></tr>'}).join('')+'</table></div>':'')+(h.length?'<div class=modal-section><h3>Highlights</h3><ul class=hl-list>'+h.map(function(x){return'<li>'+x+'</li>'}).join('')+'</ul></div>':'')+'</div>'}).catch(function(e){alert(e.message)})}
-
+  document.getElementById('modalContent').innerHTML='<div class="modal-hd"><div><h2>'+p.name+'</h2><div style="font-size:12px;color:#9CA3AF;margin-top:2px">'+p.name_zh+' ['+p.region+']</div></div><button class="close" onclick="document.getElementById(\'modalOverlay\').classList.add(\'hidden\')">&times;</button></div><div class="modal-bd"><p style="font-size:13px;color:#6B7280;line-height:1.6;margin-bottom:16px">'+p.description+'</p>'+(Object.keys(s).length?'<div class="modal-sec"><h3>Specifications</h3><table class="spec-tbl">'+Object.entries(s).map(function(e){return'<tr><td>'+e[0]+'</td><td>'+e[1]+'</td></tr>'}).join('')+'</table></div>':'')+(h.length?'<div class="modal-sec"><h3>Key Highlights</h3><ul class="hl-list">'+h.map(function(x){return'<li>'+x+'</li>'}).join('')+'</ul></div>':'')+'<button class="gen-btn" onclick="document.getElementById(\'modalOverlay\').classList.add(\'hidden\');openWriter(\''+key+'\')">AI Generate Content for This Product</button></div>'}catch(e){alert(e.message)}
+}
 function closeModal(e){if(e.target===document.getElementById('modalOverlay'))document.getElementById('modalOverlay').classList.add('hidden')}
+async function seed(){await api('POST','/api/v1/easywiki/products/seed');loadAll()}
 
-function seed(){
- var b=document.getElementById('seedBtn');b.disabled=true;b.textContent='Importing...';
- api('POST','/api/v1/easywiki/products/seed').then(function(r){b.textContent=r.count+' imported';load()}).catch(function(e){b.textContent=e.message;b.disabled=false})}
-
+/* AI Writer */
+var writerProduct=null,templates=[],models={};
+async function openWriter(key){
+ writerProduct=key;document.getElementById('aiSection').classList.remove('hidden');
+ document.getElementById('aiSection').scrollIntoView({behavior:'smooth'});
+ if(!templates.length)try{templates=(await api('GET','/api/v1/easywiki/templates')).templates||[]}catch(e){}
+ if(!models.article)try{models=await api('GET','/api/v1/easywiki/models')}catch(e){}
+ document.getElementById('aiSection').innerHTML='<div class="ai-panel"><h3>AI Content Writer</h3><p style="font-size:12px;color:#9CA3AF;margin-bottom:12px">Product: <strong>'+key+'</strong></p><div class="ai-row"><div><label>Template</label><select id="aiTemplate">'+(templates.map(function(t){return'<option value="'+t.id+'">'+t.name+'</option>'}).join(''))+'</select></div><div><label>Model</label><select id="aiModel">'+((models.article||[]).map(function(m){return'<option value="'+m.id+'">'+m.name+' ('+m.provider+')</option>'}).join(''))+'</select></div><div><label>Language</label><select id="aiLang"><option value="zh">Chinese</option><option value="en">English</option><option value="ja">Japanese</option><option value="ko">Korean</option><option value="ar">Arabic</option><option value="de">German</option><option value="fr">French</option><option value="es">Spanish</option></select></div></div><button class="ai-gen" id="aiGenBtn" onclick="doGenerate()">Generate Content</button><div id="aiResult"></div></div>'
+}
+async function doGenerate(){
+ var b=document.getElementById('aiGenBtn');b.disabled=true;b.textContent='Generating...';
+ var t=document.getElementById('aiTemplate').value,m=document.getElementById('aiModel').value,l=document.getElementById('aiLang').value;
+ try{var r=await api('POST','/api/v1/easywiki/generate',{template_id:t,product_key:writerProduct,model_id:m,language:l});
+  if(r.ok){document.getElementById('aiResult').innerHTML='<div class="ai-result">'+r.content+'<div class="btn-row"><button class="btn-copy" onclick="navigator.clipboard.writeText(this.parentElement.parentElement.textContent.replace(\"Copy Full Text\",\"\").replace(\"Regenerate\",\"\").trim())">Copy Full Text</button><button class="btn-regen" onclick="doGenerate()">Regenerate</button></div></div>'}
+  else{document.getElementById('aiResult').innerHTML='<p style="color:#EF4444">'+r.error+'</p>'}
+ }catch(e){document.getElementById('aiResult').innerHTML='<p style="color:#EF4444">Error: '+e.message+'</p>'}
+ b.disabled=false;b.textContent='Generate Content'
+}
 document.getElementById('loginPw').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin()});
-if(_token){api('GET','/api/v1/easywiki/products').then(function(r){document.getElementById('loginOverlay').classList.add('hidden');document.getElementById('app').classList.remove('hidden');document.getElementById('userName').textContent=_user.name;render(r.products,'All Products')}).catch(function(){_token=null;localStorage.removeItem('os_token')})}
+if(token){document.getElementById('loginPage').classList.add('hidden');document.getElementById('app').classList.remove('hidden');document.getElementById('userName').textContent=user.name;loadAll()}
 </script></body></html>
