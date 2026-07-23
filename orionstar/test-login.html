@@ -1,0 +1,49 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Login Test</title>
+<style>body{font:14px monospace;padding:20px;background:#111;color:#0f0}input{padding:8px;margin:4px;width:200px}button{padding:8px 16px}pre{background:#222;padding:10px;white-space:pre-wrap}</style></head><body>
+<h2>OrionStar Login Test</h2>
+<input id="email" value="admin@local" placeholder="Email"><br>
+<input id="pw" type="password" value="orgmind2026" placeholder="Password"><br>
+<button onclick="testLogin()">Test Login</button>
+<button onclick="testDirect()">Test Direct Fetch</button>
+<pre id="out"></pre>
+<script>
+var o=document.getElementById('out');
+function log(msg){o.textContent+=msg+'\n'}
+
+async function testLogin(){
+ o.textContent='';
+ log('Starting login test...');
+ try{
+  var r=await fetch('/api/v1/auth/login',{
+   method:'POST',
+   headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({email:document.getElementById('email').value,password:document.getElementById('pw').value})
+  });
+  log('Response status: '+r.status+' '+r.statusText);
+  log('Response headers: '+[...r.headers].map(function(h){return h[0]+':'+h[1]}).join(', '));
+  var d=await r.json();
+  log('Parsed JSON keys: '+Object.keys(d).join(', '));
+  if(d.token){
+   log('SUCCESS: token='+d.token.substring(0,20)+'...');
+   log('User: '+d.user.name+' ('+d.user.role+')');
+   localStorage.setItem('os_token',d.token);
+   localStorage.setItem('os_user',JSON.stringify(d.user));
+   log('Saved to localStorage');
+  }else{
+   log('FAIL: no token in response. detail='+d.detail);
+  }
+ }catch(e){
+  log('ERROR: '+e.message);
+  log('Stack: '+e.stack);
+ }
+}
+
+async function testDirect(){
+ o.textContent='';
+ log('Direct fetch test...');
+ fetch('/api/v1/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:'admin@local',password:'orgmind2026'})})
+  .then(function(r){log('Status: '+r.status);return r.json()})
+  .then(function(d){log('Result: '+(d.token?'OK token present':'FAIL: '+JSON.stringify(d)))})
+  .catch(function(e){log('ERROR: '+e)});
+}
+</script></body></html>

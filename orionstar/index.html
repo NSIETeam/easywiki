@@ -1,45 +1,37 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OrionStar Product Knowledge Base</title>
-<style>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OrionStar Product Knowledge Base</title><style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:system-ui,-apple-system,sans-serif;background:#fff;color:#111827}
 :root{--accent:#2563EB;--navy:#0A2E6C;--radius:8px;--border:#E5E7EB;--bg:#F9FAFB}
 #loginOverlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#F9FAFB}
 .login-box{width:400px;max-width:90vw;background:#fff;border-radius:12px;border:1px solid var(--border);padding:40px 32px 32px;text-align:center}
 .login-box h1{font-size:20px;font-weight:700;color:var(--navy);margin-bottom:4px}
-.login-box p{color:#9CA3AF;font-size:13px;margin-bottom:24px}
-.field{margin-bottom:14px;text-align:left}
-.field label{display:block;font-size:12px;font-weight:500;color:#374151;margin-bottom:4px}
-.field input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none}
-.field input:focus{border-color:var(--accent)}
-.login-btn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
-.login-btn:hover{background:#1D4ED8}
+.login-box .sub{color:#9CA3AF;font-size:13px;margin-bottom:24px}
+.login-box input{width:100%;padding:10px 12px;margin-bottom:12px;border:1px solid var(--border);border-radius:8px;font-size:14px;outline:none}
+.login-box input:focus{border-color:var(--accent)}
+.login-box button{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+.login-box button:hover{background:#1D4ED8}
 .login-err{color:#EF4444;font-size:12px;min-height:18px;margin-top:8px}
 .hidden{display:none!important}
 header{background:#fff;border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
 header .brand{font-size:16px;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:8px}
 header .brand .star{display:inline-block;width:14px;height:14px;background:var(--navy);clip-path:polygon(50% 0,60% 40%,100% 50%,60% 60%,50% 100%,40% 60%,0 50%,40% 40%)}
 header nav{display:flex;gap:4px}
-header nav a{text-decoration:none;color:#6B7280;font-size:13px;padding:6px 14px;border-radius:6px;transition:.15s;font-weight:500}
+header nav a{text-decoration:none;color:#6B7280;font-size:13px;padding:6px 14px;border-radius:6px;font-weight:500}
 header nav a:hover{background:var(--bg);color:#111827}
 header nav a.active{background:#EFF6FF;color:var(--accent)}
 header .user{display:flex;align-items:center;gap:10px;font-size:12px;color:#9CA3AF}
 header .user button{background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;color:#6B7280}
 .toolbar{padding:16px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--border)}
-.toolbar .search{flex:1;min-width:200px;max-width:400px;position:relative}
-.toolbar .search input{width:100%;padding:8px 12px 8px 32px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;background:var(--bg)}
-.toolbar .search input:focus{border-color:var(--accent);background:#fff}
-.toolbar .search .icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#9CA3AF;font-size:13px}
-.toolbar .filters{display:flex;gap:6px}
-.filter-btn{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:#fff;color:#374151;transition:.15s}
+.toolbar input{padding:8px 12px 8px 32px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;background:var(--bg);flex:1;min-width:200px;max-width:400px}
+.toolbar input:focus{border-color:var(--accent);background:#fff}
+.filter-btn{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:#fff;color:#374151}
 .filter-btn:hover{border-color:var(--accent);color:var(--accent)}
 .filter-btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
 .stats{padding:12px 24px;font-size:12px;color:#9CA3AF}
 .grid{padding:0 24px 40px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
-.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;cursor:pointer;transition:.15s}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:20px;cursor:pointer}
 .card:hover{border-color:var(--accent);box-shadow:0 2px 12px rgba(0,0,0,.06)}
 .card .badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;margin-bottom:8px}
 .badge.clean{background:#ECFDF5;color:#065F46}.badge.delivery{background:#FFF7ED;color:#C2410C}
@@ -66,11 +58,12 @@ header .user button{background:none;border:1px solid var(--border);border-radius
 .seed-btn{padding:4px 12px;border:1px dashed var(--border);border-radius:6px;font-size:11px;background:none;cursor:pointer;color:#9CA3AF}
 .seed-btn:hover{border-color:var(--accent);color:var(--accent)}
 </style></head><body>
+
 <div id="loginOverlay"><div class="login-box">
-<h1>OrionStar Product KB</h1><p>Sign in to access the product knowledge base</p>
-<div class="field"><label>Email</label><input id="loginEmail" placeholder="admin@local"></div>
-<div class="field"><label>Password</label><input type="password" id="loginPw" placeholder="Password"></div>
-<button class="login-btn" onclick="doLogin()">Sign In</button>
+<h1>OrionStar Product KB</h1><div class="sub">Sign in to access the product knowledge base</div>
+<input id="loginEmail" placeholder="Email" value="admin@local">
+<input type="password" id="loginPw" placeholder="Password" value="orgmind2026">
+<button onclick="doLogin()">Sign In</button>
 <div class="login-err" id="loginErr"></div></div></div>
 
 <div id="app" class="hidden">
@@ -80,14 +73,14 @@ header .user button{background:none;border:1px solid var(--border);border-radius
 <div class="user"><span id="userName"></span><button onclick="doLogout()">Sign Out</button></div></header>
 
 <div class="toolbar">
-<div class="search"><span class="icon">&#128269;</span><input id="searchInput" placeholder="Search products..." oninput="doSearch()"></div>
-<div class="filters" id="catFilters">
+<input id="searchInput" placeholder="Search products..." oninput="doSearch()">
+<div style="display:flex;gap:6px" id="catFilters">
 <button class="filter-btn on" onclick="setFilter('category','')">All</button>
 <button class="filter-btn" onclick="setFilter('category','clean')">Clean</button>
 <button class="filter-btn" onclick="setFilter('category','delivery')">Delivery</button>
 <button class="filter-btn" onclick="setFilter('category','voice')">Voice</button>
 <button class="filter-btn" onclick="setFilter('category','platform')">Platform</button></div>
-<div class="filters" id="regFilters">
+<div style="display:flex;gap:6px" id="regFilters">
 <button class="filter-btn on" onclick="setFilter('region','')">All</button>
 <button class="filter-btn" onclick="setFilter('region','overseas')">Overseas</button>
 <button class="filter-btn" onclick="setFilter('region','domestic')">Domestic</button></div>
@@ -97,53 +90,71 @@ header .user button{background:none;border:1px solid var(--border);border-radius
 
 <div id="modalOverlay" class="modal-overlay hidden" onclick="closeModal(event)"><div class="modal" id="modalContent"></div></div>
 
-<script src="app.js"></script>
 <script>
+var _token = localStorage.getItem('os_token');
+var _user = JSON.parse(localStorage.getItem('os_user')||'null');
 var filters={region:'',category:''};
 var CATS={clean:'Cleaning',delivery:'Delivery',voice:'Voice',platform:'Platform'};
 
 async function doLogin(){
- try{var u=await login(document.getElementById('loginEmail').value||'admin@local',document.getElementById('loginPw').value||'orgmind2026');
- document.getElementById('loginOverlay').classList.add('hidden');document.getElementById('app').classList.remove('hidden');
- document.getElementById('userName').textContent=u.name;load();}catch(e){document.getElementById('loginErr').textContent=e.message}}
+ var el=document.getElementById('loginErr');el.textContent='';
+ var email=document.getElementById('loginEmail').value.trim()||'admin@local';
+ var pw=document.getElementById('loginPw').value||'orgmind2026';
+ try{
+  var r=await fetch('/api/v1/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pw})});
+  var d=await r.json();
+  if(!d.token){el.textContent='Login failed: '+(d.detail||'unknown error');return}
+  _token=d.token;_user=d.user;
+  localStorage.setItem('os_token',_token);localStorage.setItem('os_user',JSON.stringify(_user));
+  document.getElementById('loginOverlay').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  document.getElementById('userName').textContent=_user.name;
+  load();
+ }catch(e){el.textContent='Error: '+e.message}
+}
 
-function doLogout(){logout();location.reload()}
+function doLogout(){_token=null;_user=null;localStorage.removeItem('os_token');localStorage.removeItem('os_user');location.reload()}
+
+function api(method,path,data){
+ var h={'Content-Type':'application/json'};if(_token)h['Authorization']='Bearer '+_token;
+ return fetch(path,{method:method,headers:h,body:data?JSON.stringify(data):undefined}).then(function(r){
+  if(!r.ok)throw new Error('HTTP '+r.status);
+  return r.json()
+ })}
 
 function setFilter(t,v){filters[t]=v;
  document.querySelectorAll('#'+(t==='category'?'catFilters':'regFilters')+' .filter-btn').forEach(function(b){
-  var m=t==='category'?CATS[v]:v;b.classList.toggle('on',b.textContent===m||(v===''&&b.textContent==='All'));});load()}
+  var m=t==='category'?CATS[v]:v;b.classList.toggle('on',b.textContent===m||(v===''&&b.textContent==='All'))});load()}
 
-async function doSearch(){
- var q=document.getElementById('searchInput').value.trim();
+function doSearch(){var q=document.getElementById('searchInput').value.trim();
  if(!q){load();return}
- try{var r=await searchProducts(q);render(r.products,'Search: '+q)}
- catch(e){document.getElementById('grid').innerHTML='<p style=color:#EF4444>'+e.message+'</p>'}}
+ api('GET','/api/v1/easywiki/products/search?q='+encodeURIComponent(q)).then(function(r){render(r.products,'Search: '+q)}).catch(function(e){document.getElementById('grid').innerHTML='<p style=color:#EF4444>'+e.message+'</p>'})}
 
-async function load(){
+function load(){
  document.getElementById('searchInput').value='';
- var f={};if(filters.region)f.region=filters.region;if(filters.category)f.category=filters.category;
- try{var r=await getProducts(f);
- render(r.products,(filters.region||filters.category)?(filters.region+' '+filters.category).trim():'All Products')}
- catch(e){document.getElementById('grid').innerHTML='<p style=color:#EF4444>'+e.message+'</p>'}}
+ var p=[];if(filters.region)p.push('region='+filters.region);if(filters.category)p.push('category='+filters.category);
+ var q=p.length?'?'+p.join('&'):'';
+ api('GET','/api/v1/easywiki/products'+q).then(function(r){
+  render(r.products,(filters.region||filters.category)?(filters.region+' '+filters.category).trim():'All Products')
+ }).catch(function(e){document.getElementById('grid').innerHTML='<p style=color:#EF4444>'+e.message+'</p>'})}
 
-function render(p,l){
- if(!p||!p.length){document.getElementById('grid').innerHTML='<div style=grid-column:1/-1;text-align:center;padding:60px;color:#9CA3AF><p style=font-size:16px>No products found</p><p style=font-size:13px>Click Seed Data to import 21 products</p></div>';document.getElementById('stats').textContent='0 products';return}
- document.getElementById('stats').textContent=p.length+' products - '+l;
- document.getElementById('grid').innerHTML=p.map(function(x){return'<div class=card onclick="detail(''+x.product_key+'')"><span class="badge '+x.category+'">'+(CATS[x.category]||x.category)+'</span><h3>'+x.name+'</h3><div class=zh>'+(x.name_zh||'')+'</div><div class=desc>'+(x.description||'')+'</div><span class=region>'+x.region+'</span>'+(x.highlights||[]).length?'<div class=hl-tags>'+x.highlights.slice(0,3).map(function(h){return'<span class=hl-tag>'+h+'</span>'}).join('')+'</div>':''+'</div>'}).join('')}
+function render(products,label){
+ if(!products||!products.length){document.getElementById('grid').innerHTML='<div style=grid-column:1/-1;text-align:center;padding:60px;color:#9CA3AF><p style=font-size:16px>No products found</p><p style=font-size:13px>Click Seed Data to import 21 products</p></div>';document.getElementById('stats').textContent='0 products';return}
+ document.getElementById('stats').textContent=products.length+' products - '+label;
+ document.getElementById('grid').innerHTML=products.map(function(p){return'<div class=card onclick="detail(\''+p.product_key+'\')"><span class="badge '+p.category+'">'+(CATS[p.category]||p.category)+'</span><h3>'+p.name+'</h3><div class=zh>'+(p.name_zh||'')+'</div><div class=desc>'+(p.description||'')+'</div><span class=region>'+p.region+'</span>'+(p.highlights||[]).length?'<div class=hl-tags>'+p.highlights.slice(0,3).map(function(h){return'<span class=hl-tag>'+h+'</span>'}).join('')+'</div>':''+'</div>'}).join('')}
 
-async function detail(k){
- try{var p=await getProduct(k);var s=p.specifications||{};var h=p.highlights||[];
- document.getElementById('modalOverlay').classList.remove('hidden');
- document.getElementById('modalContent').innerHTML='<div class=modal-header><div><h2>'+p.name+'</h2><div style=color:#9CA3AF;font-size:13px;margin-top:2px>'+(p.name_zh||'')+'</div></div><button class=close onclick="document.getElementById('modalOverlay').classList.add('hidden')">&times;</button></div><div class=modal-body><p style=color:#6B7280;font-size:13px;margin-bottom:16px;line-height:1.6>'+(p.description||'')+'</p><span class="badge '+p.category+'" style=margin-bottom:12px>'+(CATS[p.category]||p.category)+'</span><span class=region style=margin-left:8px>'+p.region+'</span>'+(Object.keys(s).length?'<div class=modal-section><h3>Specifications</h3><table class=spec-table>'+Object.entries(s).map(function(e){return'<tr><td>'+e[0]+'</td><td>'+e[1]+'</td></tr>'}).join('')+'</table></div>':'')+(h.length?'<div class=modal-section><h3>Highlights</h3><ul class=hl-list>'+h.map(function(x){return'<li>'+x+'</li>'}).join('')+'</ul></div>':'')+'</div>'}
- catch(e){alert(e.message)}}
+function detail(key){
+ api('GET','/api/v1/easywiki/products/'+key).then(function(p){
+  var s=p.specifications||{};var h=p.highlights||[];
+  document.getElementById('modalOverlay').classList.remove('hidden');
+  document.getElementById('modalContent').innerHTML='<div class=modal-header><div><h2>'+p.name+'</h2><div style=color:#9CA3AF;font-size:13px;margin-top:2px>'+(p.name_zh||'')+'</div></div><button class=close onclick="document.getElementById(\'modalOverlay\').classList.add(\'hidden\')">&times;</button></div><div class=modal-body><p style=color:#6B7280;font-size:13px;margin-bottom:16px;line-height:1.6>'+(p.description||'')+'</p><span class="badge '+p.category+'" style=margin-bottom:12px>'+(CATS[p.category]||p.category)+'</span><span class=region style=margin-left:8px>'+p.region+'</span>'+(Object.keys(s).length?'<div class=modal-section><h3>Specifications</h3><table class=spec-table>'+Object.entries(s).map(function(e){return'<tr><td>'+e[0]+'</td><td>'+e[1]+'</td></tr>'}).join('')+'</table></div>':'')+(h.length?'<div class=modal-section><h3>Highlights</h3><ul class=hl-list>'+h.map(function(x){return'<li>'+x+'</li>'}).join('')+'</ul></div>':'')+'</div>'}).catch(function(e){alert(e.message)})}
 
 function closeModal(e){if(e.target===document.getElementById('modalOverlay'))document.getElementById('modalOverlay').classList.add('hidden')}
 
-async function seed(){
+function seed(){
  var b=document.getElementById('seedBtn');b.disabled=true;b.textContent='Importing...';
- try{var r=await seedProducts();b.textContent=r.count+' imported';load()}
- catch(e){b.textContent=e.message;b.disabled=false}}
+ api('POST','/api/v1/easywiki/products/seed').then(function(r){b.textContent=r.count+' imported';load()}).catch(function(e){b.textContent=e.message;b.disabled=false})}
 
 document.getElementById('loginPw').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin()});
-if(isLoggedIn()){document.getElementById('loginOverlay').classList.add('hidden');document.getElementById('app').classList.remove('hidden');document.getElementById('userName').textContent=getUser().name;load()}
+if(_token){api('GET','/api/v1/easywiki/products').then(function(r){document.getElementById('loginOverlay').classList.add('hidden');document.getElementById('app').classList.remove('hidden');document.getElementById('userName').textContent=_user.name;render(r.products,'All Products')}).catch(function(){_token=null;localStorage.removeItem('os_token')})}
 </script></body></html>
