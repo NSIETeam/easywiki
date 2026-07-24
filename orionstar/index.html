@@ -285,7 +285,7 @@ function ewApi(method,path,data){
  return fetch(path,{method:method,headers:h,body:data?JSON.stringify(data):undefined}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})
 }
 async function ewLoadProducts(){
- try{var r=await ewApi('GET','/api/v1/easywiki/products');ALL_PRODUCTS=r.products;return ALL_PRODUCTS}catch(e){return[]}
+ try{try{var r=await ewApi('GET','/api/v1/easywiki/products');ALL_PRODUCTS=r.products;return ALL_PRODUCTS}catch(e){return[]}
 }
 async function ewSeed(){await ewApi('POST','/api/v1/easywiki/products/seed')}
 
@@ -496,7 +496,7 @@ function searchTag(q){document.getElementById('searchInput').value=q;doSearch();
 
 let currentItem=null;
 async function initApp(){
- if(!ALL_(ALL_PRODUCTS.length||PRODUCTS.length))try{await ewLoadProducts()}catch(e){}
+ if(!ALL_(ALL_(ALL_PRODUCTS.length||PRODUCTS.length)||(ALL_PRODUCTS.length||PRODUCTS.length)))try{ALL_PRODUCTS=await ewLoadProducts()||ALL_PRODUCTS}catch(e){}
  try{var m=await ewApi('GET','/api/v1/easywiki/models');models=m}catch(e){}
  try{var t=await ewApi('GET','/api/v1/easywiki/templates');templates=t.templates||[]}catch(e){}
  renderAll();
@@ -507,7 +507,7 @@ function buildNav(){
   let h='';
   h+='<div class="nav-region">&#127464;&#127475; 国内产品</div>';
   const dcats={voice:[],delivery:[],platform:[]};
-  (ALL_(ALL_PRODUCTS.length||PRODUCTS.length)?ALL_PRODUCTS:PRODUCTS).filter(p=>p.region==='domestic').forEach(p=>{if(dcats[p.cat])dcats[p.cat].push(p)});
+  (ALL_(ALL_(ALL_PRODUCTS.length||PRODUCTS.length)||(ALL_PRODUCTS.length||PRODUCTS.length))?ALL_PRODUCTS:PRODUCTS).filter(p=>p.region==='domestic').forEach(p=>{if(dcats[p.cat])dcats[p.cat].push(p)});
   Object.entries(dcats).forEach(function(e){
     var k=e[0],ps=e[1];
     if(!ps.length)return;
@@ -520,7 +520,7 @@ function buildNav(){
   });
   h+='<div class="nav-region" style="margin-top:12px">[Global] 海外产品</div>';
   const ocats={clean:[],voice:[],delivery:[]};
-  (ALL_(ALL_PRODUCTS.length||PRODUCTS.length)?ALL_PRODUCTS:PRODUCTS).filter(p=>p.region==='overseas').forEach(p=>{if(ocats[p.cat])ocats[p.cat].push(p)});
+  (ALL_(ALL_(ALL_PRODUCTS.length||PRODUCTS.length)||(ALL_PRODUCTS.length||PRODUCTS.length))?ALL_PRODUCTS:PRODUCTS).filter(p=>p.region==='overseas').forEach(p=>{if(ocats[p.cat])ocats[p.cat].push(p)});
   Object.entries(ocats).forEach(function(e){
     var k=e[0],ps=e[1];
     if(!ps.length)return;
@@ -543,7 +543,7 @@ function setNavActive(id){
 function goHome(){currentItem=null;document.getElementById('breadcrumb').innerHTML='&#127968; 首页';document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active')});renderHome()}
 
 function selectProduct(id){
-  var p=(ALL_(ALL_PRODUCTS.length||PRODUCTS.length)?ALL_PRODUCTS:PRODUCTS).find(function(x){return x.id===id});
+  var p=(ALL_(ALL_(ALL_PRODUCTS.length||PRODUCTS.length)||(ALL_PRODUCTS.length||PRODUCTS.length))?ALL_PRODUCTS:PRODUCTS).find(function(x){return x.id===id});
   if(!p)return;
   currentItem=p;setNavActive(id);
   document.getElementById('breadcrumb').innerHTML='<span onclick="goHome()">&#127968; 首页</span> &rsaquo; '+p.name;
@@ -672,7 +672,7 @@ function renderDetail(p){
   if(p.assets&&p.assets.web){h+='<a href="'+p.assets.web+'" target="_blank" class="asset-card"><div class="asset-icon">[Global]</div><div class="info"><h4>官网页面</h4><p>cn/en.orionstar.com</p></div></a>';}
   if(p.assets&&p.assets.video_wiki){h+='<a href="'+p.assets.video_wiki+'" target="_blank" class="asset-card"><div class="asset-icon">&#127916;</div><div class="info"><h4>视频号资料</h4><p>飞书视频资料库</p></div></a>';}
   h+='</div></div></div>';
-  var _rel=(ALL_(ALL_PRODUCTS.length||PRODUCTS.length)?ALL_PRODUCTS:PRODUCTS).filter(function(x){return x.id!==p.id&&x.cat===p.cat}).slice(0,6);
+  var _rel=(ALL_(ALL_(ALL_PRODUCTS.length||PRODUCTS.length)||(ALL_PRODUCTS.length||PRODUCTS.length))?ALL_PRODUCTS:PRODUCTS).filter(function(x){return x.id!==p.id&&x.cat===p.cat}).slice(0,6);
   if(_rel.length){h+='<div class="related-section"><h3>[Book] 相关产品推荐</h3><div class="related-grid">';_rel.forEach(function(r){h+='<div class="related-card" onclick="selectProduct(\''+ r.id +'\')">'+'<div class="rc-name">'+r.name+'</div><div class="rc-zh">'+r.zh+'</div></div>';});h+='</div></div>';}
   h+='</div>';
   ca.innerHTML=h;
@@ -703,7 +703,7 @@ function showLangs(){
 }
 
 function doSearchCat(cat){
-  var hits=(ALL_(ALL_PRODUCTS.length||PRODUCTS.length)?ALL_PRODUCTS:PRODUCTS).filter(function(p){return p.cat===cat});
+  var hits=(ALL_(ALL_(ALL_PRODUCTS.length||PRODUCTS.length)||(ALL_PRODUCTS.length||PRODUCTS.length))?ALL_PRODUCTS:PRODUCTS).filter(function(p){return p.cat===cat});
   var ca=document.getElementById('contentArea');
   var ci=CATS[cat]?CATS[cat].icon:'';
   document.getElementById('breadcrumb').innerHTML='<span onclick="goHome()">&#127968; 首页</span> &rsaquo; '+CATS[cat].name;
@@ -718,9 +718,9 @@ function doSearchCat(cat){
 
 function renderHome(){
   var ca=document.getElementById('contentArea');
-  var totalProducts=(ALL_PRODUCTS.length||PRODUCTS.length);
+  var totalProducts=(ALL_(ALL_PRODUCTS.length||PRODUCTS.length)||(ALL_PRODUCTS.length||PRODUCTS.length));
   var totalSolutions=SOLUTIONS.length;
-  var totalAssets=PRODUCTS.reduce(function(acc,p){return acc+Object.keys(p.assets||{}).length},0);
+  var totalAssets=(ALL_PRODUCTS.length?ALL_PRODUCTS:PRODUCTS).reduce(function(acc,p){return acc+Object.keys(p.assets||{}).length},0);
   var totalLangs=LANGS.length;
   var h='';
   h+='<div class="hero">';
@@ -744,7 +744,7 @@ function renderHome(){
   h+='<div class="section-hd"><h2>&#128230; 产品分类</h2></div>';
   h+='<div class="cat-grid">';
   [{cat:'voice',label:'语音/接待机器人',sub:'接待·迎宾·问答',icon:'&#127897;'},{cat:'delivery',label:'递送/配送机器人',sub:'送餐·配送·物流',icon:'&#128230;'},{cat:'clean',label:'清洁机器人',sub:'洗地·扫地·吸尘',icon:'&#129529;'}].forEach(function(c){
-    var cnt=(ALL_(ALL_PRODUCTS.length||PRODUCTS.length)?ALL_PRODUCTS:PRODUCTS).filter(function(p){return p.cat===c.cat}).length;
+    var cnt=(ALL_(ALL_(ALL_PRODUCTS.length||PRODUCTS.length)||(ALL_PRODUCTS.length||PRODUCTS.length))?ALL_PRODUCTS:PRODUCTS).filter(function(p){return p.cat===c.cat}).length;
     h+='<div class="cat-card" onclick="doSearchCat(\''+c.cat+'\')">';
     h+='<div class="cat-icon">'+c.icon+'</div>';
     h+='<div class="cat-info"><h3>'+c.label+'</h3><p>'+c.sub+' &middot; '+cnt+'款</p></div></div>';
@@ -804,7 +804,7 @@ async function generateArticle(){
  var prodKey=currentProduct||'';
  var templateId=currentTemplate||'';
  try{
-  var r=await ewApi('POST','/api/v1/easywiki/generate',{template_id:templateId,product_key:prodKey,model_id:model,language:lang});
+  try{var r=await ewApi('POST','/api/v1/easywiki/generate',{template_id:templateId,product_key:prodKey,model_id:model,language:lang});
   if(r.ok){
    document.getElementById('aiResult').style.display='block';
    document.getElementById('aiResultText').innerHTML=r.content.replace(/\n/g,'<br>');
@@ -1016,7 +1016,7 @@ initApp();
 // Auto-login with stored token
 if(TOKEN){
  (async function(){
-  try{await ewLoadProducts();document.getElementById('loginPage').classList.add('hidden');document.getElementById('userName').textContent=USER.name;initApp()}
+  try{ALL_PRODUCTS=await ewLoadProducts()||ALL_PRODUCTS;document.getElementById('loginPage').classList.add('hidden');document.getElementById('userName').textContent=USER.name;initApp()}
   catch(e){TOKEN=null;localStorage.removeItem('os_token');document.getElementById('loginPage').classList.remove('hidden')}
  })()
 }
